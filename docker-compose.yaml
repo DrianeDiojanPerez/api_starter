@@ -1,14 +1,5 @@
 services:
   # ──── Global Containers ──────────────────────────────────
-  migrate:
-    profiles: ["migrate"]
-    image: ghcr.io/amacneil/dbmate
-    container_name: api-starter-migrate
-    restart: no
-    volumes:
-      - ./migration:/db/migrations
-    networks:
-      - isolated
   mail:
     image: mailhog/mailhog
     container_name: api-starter-mail
@@ -55,6 +46,12 @@ services:
       target: development
     env_file:
       - .env
+    # .env holds host names so the tooling works outside Docker. Inside the
+    # network the services are reachable by their compose name instead.
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      MAIL_HOST: mail
     volumes:
       - .:/app
       - cargo-registry:/usr/local/cargo/registry
@@ -78,6 +75,10 @@ services:
       target: production
     env_file:
       - .env
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      MAIL_HOST: mail
     ports:
       - "${APP_PORT}:${APP_PORT}"
     restart: unless-stopped
