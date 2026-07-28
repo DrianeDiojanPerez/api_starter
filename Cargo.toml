@@ -70,6 +70,10 @@ thiserror = "2"
 anyhow = "1"
 dotenvy = "0.15"
 
+[dev-dependencies]
+http-body-util = "0.1"
+tower = { version = "0.5", features = ["util"] }
+
 [profile.release]
 lto = "thin"
 codegen-units = 1
