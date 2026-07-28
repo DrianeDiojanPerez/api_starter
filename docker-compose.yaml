@@ -1,0 +1,119 @@
+services:
+  # ──── Global Containers ──────────────────────────────────
+  migrate:
+    profiles: ["migrate"]
+    image: ghcr.io/amacneil/dbmate
+    container_name: api-starter-migrate
+    restart: no
+    volumes:
+      - ./migration:/db/migrations
+    networks:
+      - isolated
+  mail:
+    image: mailhog/mailhog
+    container_name: api-starter-mail
+    profiles: ["dev", "uat"]
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - isolated
+  database:
+    image: postgres:latest
+    container_name: api-starter-db
+    profiles: ["dev", "uat"]
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+      TZ: America/Belize
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - storage:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - isolated
+  # ──── Test ──────────────────────────────────
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      target: test
+      network: host
+    command: cargo test --all-targets
+  # ──── Dev ──────────────────────────────────
+  dev:
+    profiles: ["dev"]
+    container_name: api-starter-api-dev
+    build:
+      context: .
+      target: development
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - cargo-registry:/usr/local/cargo/registry
+      - target-cache:/app/target
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    depends_on:
+      mail:
+        condition: service_started
+      database:
+        condition: service_healthy
+    networks:
+      - isolated
+      - shared
+  # ──── Uat ──────────────────────────────────
+  uat:
+    profiles: ["uat"]
+    container_name: api-starter-api-uat
+    build:
+      context: .
+      target: production
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    restart: unless-stopped
+    volumes:
+      - /var/log/uat_api_base:/app/storage/logs
+    depends_on:
+      mail:
+        condition: service_started
+      database:
+        condition: service_healthy
+    networks:
+      - isolated
+      - shared
+  # ──── Prod ──────────────────────────────────
+  prod:
+    profiles: ["prod"]
+    container_name: api-starter-api-prod
+    build:
+      context: .
+      target: production
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    restart: unless-stopped
+    volumes:
+      - /var/log/api_starter:/app/storage/logs
+    networks:
+      - isolated
+      - shared
+volumes:
+  storage:
+  cargo-registry:
+  target-cache:
+networks:
+  isolated:
+  shared:
+    external: true
+    name: api-starter-bridge
