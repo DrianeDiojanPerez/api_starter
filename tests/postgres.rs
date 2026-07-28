@@ -1,11 +1,14 @@
 //! Repository and transaction tests against a real PostgreSQL instance.
 //!
-//! These are skipped unless `TEST_DATABASE_URL` points at a migrated database,
-//! so `cargo test` stays runnable without any infrastructure. Run them with:
+//! These are skipped unless `TEST_DATABASE_URL` is set, so `cargo test` stays
+//! runnable without any infrastructure. Run them with:
 //!
 //! ```text
-//! just test-integration
+//! just test-all
 //! ```
+//!
+//! The migrations are embedded in the crate, so an empty database is enough:
+//! the first test to run applies them.
 //!
 //! Every test namespaces the rows it creates, so they are safe to run in
 //! parallel and against a database that already holds the seed data.
@@ -32,15 +35,25 @@ use api_starter::shared::pagination::ListRequest;
 use api_starter::shared::rbac::{Engine, PostgresRbacStore, RbacEngine, Store as RbacStore};
 use api_starter::shared::utils;
 
-/// Returns the pool, or `None` when the suite should be skipped.
+/// Returns a migrated pool, or `None` when the suite should be skipped.
+///
+/// Each test gets its own pool: `#[tokio::test]` builds a runtime per test,
+/// and a sqlx pool cannot outlive the runtime that created it. Migrating is
+/// idempotent and sqlx takes an advisory lock first, so running it every time
+/// is safe and costs one round trip once the schema is up to date.
 async fn pool() -> Option<PgPool> {
     let url = std::env::var("TEST_DATABASE_URL").ok()?;
 
     let pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(2)
         .connect(&url)
         .await
         .expect("TEST_DATABASE_URL is set but the database is unreachable");
+
+    api_starter::database::MIGRATOR
+        .run(&pool)
+        .await
+        .expect("the embedded migrations should apply");
 
     Some(pool)
 }
