@@ -1,0 +1,16 @@
+meta {
+  name: Delete User
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{url}}/v1/users/{{created_user_id}}
+  body: none
+  auth: inherit
+}
+
+docs {
+  Soft delete. The row is kept and its status flips to `Deleted`, so the user
+  still shows up under `?status=Deleted`.
+}

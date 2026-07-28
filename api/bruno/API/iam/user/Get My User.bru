@@ -1,0 +1,21 @@
+meta {
+  name: Get My User
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{url}}/v1/users/my-user
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.data.user_id: isDefined
+}
+
+docs {
+  Returns the record of the authenticated user. No permission required beyond
+  a valid token.
+}

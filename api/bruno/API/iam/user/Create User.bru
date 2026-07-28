@@ -1,0 +1,40 @@
+meta {
+  name: Create User
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{url}}/v1/users
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "user_name": "jsmith",
+    "email": "jsmith@example.com",
+    "password": "Sup3r$ecret",
+    "first_name": "John",
+    "last_name": "Smith",
+    "avatar_id": "",
+    "department": 1,
+    "roles": ["Staff"]
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  // Keeps the follow up patch and delete requests pointed at this user.
+  bru.setEnvVar("created_user_id", res.body.data);
+}
+
+docs {
+  `password` must pass the strong password rule: at least 8 characters with an
+  uppercase letter, a lowercase letter, a digit and a symbol.
+
+  A duplicate `user_name` or `email` comes back as `422`.
+}

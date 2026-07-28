@@ -1,0 +1,29 @@
+meta {
+  name: Patch My User
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{url}}/v1/users/my-user
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "first_name": "App",
+    "last_name": "admin",
+    "avatar_id": "1bbd9ab35c7fca7c40c3d834fe0c6fc3.gif"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Self service update, narrowed to `avatar_id`, `first_name`, `last_name` and
+  `department_id`. Sending `status`, `password` or role changes here has no
+  effect, they are dropped before the update runs.
+}

@@ -1,0 +1,40 @@
+meta {
+  name: Login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{url}}/v1/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "password": "{{password}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.data.token: isDefined
+  res.body.data.refresh_token: isDefined
+}
+
+script:post-response {
+  bru.setEnvVar("token", res.body.data.token);
+  bru.setEnvVar("refresh_token", res.body.data.refresh_token);
+
+  // Decode the JWT payload so the user scoped requests have an id to use.
+  const payload = JSON.parse(atob(res.body.data.token.split(".")[1]));
+  bru.setEnvVar("user_id", payload.user_id);
+}
+
+docs {
+  Issues an access token and a refresh token.
+
+  Stores `token`, `refresh_token` and `user_id` on the environment, so run this
+  before anything else in the collection.
+}

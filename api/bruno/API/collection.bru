@@ -1,0 +1,22 @@
+meta {
+  name: Development
+  seq: 1
+}
+
+auth {
+  mode: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  # API Starter
+
+  Auth, user and permission endpoints.
+
+  Run `Login` first: its post response script stores `token`, `refresh_token`
+  and `user_id` on the environment, and every other request reads them from
+  there.
+}

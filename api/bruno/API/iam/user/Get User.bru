@@ -1,0 +1,20 @@
+meta {
+  name: Get User
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{url}}/v1/users/{{user_id}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  `user_id` is set by `Login`. Replace it with any other id to read a different
+  record.
+}

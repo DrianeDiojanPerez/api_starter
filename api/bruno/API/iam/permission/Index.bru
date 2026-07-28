@@ -1,0 +1,22 @@
+meta {
+  name: Index
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{url}}/v1/permissions
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Lists every permission with its resource and owning module.
+
+  The authorization middleware expects them written as `Resource.Name`, for
+  example `Users.View All`.
+}

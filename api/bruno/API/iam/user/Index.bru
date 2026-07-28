@@ -1,0 +1,36 @@
+meta {
+  name: Index
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{url}}/v1/users?page=1&per_page=10&sort_by=user_name&order=asc
+  body: none
+  auth: inherit
+}
+
+params:query {
+  page: 1
+  per_page: 10
+  sort_by: user_name
+  order: asc
+  ~status: Active
+  ~role: Admin
+  ~department_id: 1
+  ~first_name: App
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.current_page: eq 1
+}
+
+docs {
+  Paginated user list. Requires the `Users.View All` permission, which the
+  `Admin` role bypasses.
+
+  Filters: `status`, `role`, `department_id`, `first_name`.
+  Sortable columns: `user_name`, `email`, `first_name`, `last_name`, `status`,
+  `department`.
+}

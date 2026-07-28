@@ -1,0 +1,32 @@
+meta {
+  name: RefreshToken
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{url}}/v1/refresh-token
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "token": "{{refresh_token}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.data.token: isDefined
+}
+
+script:post-response {
+  bru.setEnvVar("token", res.body.data.token);
+  bru.setEnvVar("refresh_token", res.body.data.refresh_token);
+}
+
+docs {
+  Exchanges the refresh token for a fresh token pair. Both tokens on the
+  environment are replaced with the new ones.
+}

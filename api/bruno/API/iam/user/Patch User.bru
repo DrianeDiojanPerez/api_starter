@@ -1,0 +1,25 @@
+meta {
+  name: Patch User
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{url}}/v1/users/{{created_user_id}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "jsmith@example.com",
+    "add_roles": ["Developer"]
+  }
+}
+
+docs {
+  Partial update. Accepted fields: `avatar_id`, `first_name`, `last_name`,
+  `email`, `department_id`, `status`, `password`, `add_roles`, `remove_roles`.
+
+  Anything else is rejected with `400 invalid json body`.
+}
