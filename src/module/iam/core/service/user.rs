@@ -268,7 +268,7 @@ mod tests {
             email: "admin@example.com".to_owned(),
             password: "hashed".to_owned(),
             first_name: "App".to_owned(),
-            last_name: "admin".to_owned(),
+            last_name: "Admin".to_owned(),
             status: Status {
                 id: 1,
                 status: "Active".to_owned(),

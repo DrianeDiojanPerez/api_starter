@@ -4,9 +4,8 @@ Starting point for a Rust API service: **authentication**, **users** and
 **permissions**, ready to build the rest of a product on top of. Built with
 axum, sqlx and tracing.
 
-Ported from the Go API Starter backend, keeping its hexagonal layout
-(`module/<name>/{core,adapter}`) so new modules drop in beside `auth` and
-`iam` without touching anything else.
+Laid out hexagonally (`module/<name>/{core,adapter}`) so new modules drop in
+beside `auth` and `iam` without touching anything else.
 
 ## Stack
 
