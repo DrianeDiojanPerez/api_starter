@@ -25,9 +25,14 @@ watch:
 build:
     cargo build --release --locked
 
-# Run the test suite.
+# Run the unit and HTTP tests. No database needed.
 test:
     cargo test --all-targets
+
+# Run everything, including the tests that need a migrated database.
+test-all: services migrate
+    TEST_DATABASE_URL="postgres://$DB_USERNAME:$DB_PASSWORD@127.0.0.1:$DB_PORT/$DB_DATABASE" \
+        cargo test --all-targets
 
 # Fail on any clippy warning.
 lint:
@@ -41,7 +46,7 @@ fmt:
 fmt-check:
     cargo fmt --all --check
 
-# Everything CI would run.
+# Everything CI would run without infrastructure.
 check: fmt-check lint test
 
 # Remove build artifacts and local logs.

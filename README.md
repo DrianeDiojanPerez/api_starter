@@ -107,7 +107,8 @@ cargo run
 just setup         # copy .env, start postgres and mailhog, migrate
 just run           # cargo run
 just watch         # cargo watch -x run
-just test          # cargo test --all-targets
+just test          # unit and HTTP tests, no infrastructure needed
+just test-all      # the above plus the tests that need a database
 just lint          # cargo clippy --all-targets -- -D warnings
 just fmt           # cargo fmt --all
 just check         # fmt-check + lint + test
@@ -117,6 +118,31 @@ just api           # run the Bruno collection against a running server
 
 A `Makefile` with the same migration targets is kept for parity with the Go
 repository.
+
+## Tests
+
+Three layers, all runnable with one command each:
+
+| Layer                                | Where                             | Needs a database |
+| ------------------------------------ | --------------------------------- | ---------------- |
+| Unit tests, fakes for the boundaries  | `#[cfg(test)]` next to the code    | no               |
+| HTTP tests through the real router    | `tests/auth_routes.rs`, `tests/iam_routes.rs` | no   |
+| Repository, transaction and RBAC tests | `tests/postgres.rs`               | yes              |
+
+`tests/support/mod.rs` holds the fakes that stand in for the auth, RBAC, user
+and permission services, so the HTTP tests exercise the real middleware stack,
+extractors, routing and error rendering without any infrastructure.
+
+`tests/postgres.rs` **skips itself** unless `TEST_DATABASE_URL` points at a
+migrated database, which keeps `cargo test` green on a bare checkout:
+
+```bash
+just test        # skips the database layer
+just test-all    # starts postgres, migrates, runs everything
+```
+
+Those tests namespace every row they insert, so they are safe to run in
+parallel and against a database that already holds the seed data.
 
 ## Migrations
 
