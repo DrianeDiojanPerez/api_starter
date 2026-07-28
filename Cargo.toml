@@ -3,7 +3,7 @@ name = "api_starter"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.82"
-description = "API Starter backend IAM service (auth, users, permissions)"
+description = "API Starter backend"
 publish = false
 
 [[bin]]
