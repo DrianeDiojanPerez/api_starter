@@ -1,4 +1,3 @@
--- migrate:up
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS iam.users(
@@ -16,5 +15,3 @@ CREATE TABLE IF NOT EXISTS iam.users(
 );
 
 INSERT INTO iam.users(user_name,email, password,first_name, last_name,status_id, department_id) VALUES('admin', 'admin@example.com', '$2a$10$Mseb73NYJsJ/d8fcD.JZGuJgAeciQXFxaxY7uXdVCtvH2u/muejNy', 'App', 'Admin', 1, 1);
--- migrate:down
-DROP TABLE IF EXISTS iam.users;

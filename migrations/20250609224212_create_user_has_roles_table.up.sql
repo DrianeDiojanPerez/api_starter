@@ -1,4 +1,3 @@
--- migrate:up
 CREATE TABLE IF NOT EXISTS iam.user_has_roles(
     user_id uuid,
     role_id INT,
@@ -11,6 +10,3 @@ INSERT INTO iam.user_has_roles(user_id, role_id)
 SELECT u.id, r.id
 FROM iam.users u, iam.roles r
 WHERE r.name = 'Admin';
-
--- migrate:down
-DROP TABLE IF EXISTS iam.user_has_roles;

@@ -1,4 +1,3 @@
--- migrate:up
 CREATE TABLE IF NOT EXISTS iam.departments(
     id SERIAL PRIMARY KEY,
     name VARCHAR(100),
@@ -8,7 +7,3 @@ CREATE TABLE IF NOT EXISTS iam.departments(
 
 
 INSERT INTO iam.departments (name, company_id) VALUES ('Administration', 1);
-
-
--- migrate:down
-DROP TABLE IF EXISTS iam.departments;

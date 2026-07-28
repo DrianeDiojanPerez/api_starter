@@ -1,4 +1,3 @@
--- migrate:up
 CREATE TABLE IF NOT EXISTS iam.role_has_permissions(
     role_id INT,
     permission_id INT,
@@ -11,6 +10,3 @@ INSERT INTO iam.role_has_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM iam.roles r, iam.permissions p
 WHERE r.name = 'Admin' OR r.name = 'Developer';
-
--- migrate:down
-DROP TABLE IF EXISTS iam.role_has_permissions;

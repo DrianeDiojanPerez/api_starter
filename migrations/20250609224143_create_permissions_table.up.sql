@@ -1,4 +1,3 @@
--- migrate:up
 CREATE TABLE
     IF NOT EXISTS iam.permissions (
         id SERIAL PRIMARY KEY,
@@ -18,5 +17,3 @@ VALUES
     ('Make A Copy', 'Catalogues', 2),
     ('Restore', 'Catalogues', 2),
     ('Delete', 'Customers', 3);
--- migrate:down
-DROP TABLE IF EXISTS iam.permissions;
