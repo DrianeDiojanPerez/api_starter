@@ -8,9 +8,9 @@ mod server;
 pub use auth::Auth;
 pub use db::Db;
 pub use jwt::Jwt;
-pub use logger::Logger;
+pub use logger::{LogLevel, Logger};
 pub use mail::Mail;
-pub use server::{Deployment, Server};
+pub use server::{Deployment, Environment, Server};
 
 use std::env;
 use std::str::FromStr;
@@ -44,8 +44,8 @@ impl AppConfig {
 
         Ok(Self {
             server: Self::load_server()?,
-            logger: Self::load_logger(),
-            deployment: Self::load_deployment(),
+            logger: Self::load_logger()?,
+            deployment: Self::load_deployment()?,
             db: Self::load_db()?,
             mail: Self::load_mail()?,
             jwt: Self::load_jwt()?,
@@ -59,19 +59,19 @@ impl AppConfig {
         })
     }
 
-    fn load_logger() -> Logger {
-        Logger {
-            level: string("LOGGER_LEVEL").unwrap_or_else(|| "0".to_owned()),
+    fn load_logger() -> Result<Logger, ConfigError> {
+        Ok(Logger {
+            level: parsed("LOGGER_LEVEL")?.unwrap_or_default(),
             directory: string("LOGGER_DIRECTORY").unwrap_or_else(|| "storage/logs".to_owned()),
-        }
+        })
     }
 
-    fn load_deployment() -> Deployment {
-        Deployment {
+    fn load_deployment() -> Result<Deployment, ConfigError> {
+        Ok(Deployment {
             name: string("APP_NAME").unwrap_or_else(|| "App_sample".to_owned()),
-            environment: string("APP_ENVIRONMENT").unwrap_or_else(|| "DEVELOPMENT".to_owned()),
+            environment: parsed("APP_ENVIRONMENT")?.unwrap_or_default(),
             time_zone: string("APP_TIMEZONE").unwrap_or_else(|| "America/Belize".to_owned()),
-        }
+        })
     }
 
     fn load_db() -> Result<Db, ConfigError> {
@@ -186,37 +186,31 @@ mod tests {
     }
 
     #[test]
-    fn translates_the_numeric_log_levels_the_go_service_used() {
-        let level = |value: &str| {
-            Logger {
-                level: value.to_owned(),
-                directory: "storage/logs".to_owned(),
-            }
-            .directive()
-            .to_owned()
+    fn the_logger_level_is_a_name_not_a_number() {
+        let logger = |value: &str| Logger {
+            level: value.parse().expect("the level should parse"),
+            directory: "storage/logs".to_owned(),
         };
 
-        assert_eq!(level("-8"), "trace");
-        assert_eq!(level("-4"), "debug");
-        assert_eq!(level("0"), "info");
-        assert_eq!(level("4"), "warn");
-        assert_eq!(level("8"), "error");
-        // A tracing level name passes straight through.
-        assert_eq!(level("debug"), "debug");
+        assert_eq!(logger("debug").level.to_string(), "debug");
+        assert_eq!(logger("ERROR").level.to_string(), "error");
+        // The numeric slog levels the Go service used are gone.
+        assert!("0".parse::<LogLevel>().is_err());
     }
 
     #[test]
     fn only_production_disables_the_stdout_logger() {
-        let deployment = |env: &str| Deployment {
+        let deployment = |environment: Environment| Deployment {
             name: "App_sample".to_owned(),
-            environment: env.to_owned(),
+            environment,
             time_zone: "America/Belize".to_owned(),
         };
 
-        assert!(deployment("production").is_production());
-        assert!(deployment("PRODUCTION").is_production());
-        assert!(!deployment("DEVELOPMENT").is_production());
-        assert!(!deployment("uat").is_production());
+        assert!(deployment(Environment::Production).is_production());
+        assert!(!deployment(Environment::Development).is_production());
+        assert!(!deployment(Environment::Local).is_production());
+        // Only the three names are accepted.
+        assert!("staging".parse::<Environment>().is_err());
     }
 
     #[test]

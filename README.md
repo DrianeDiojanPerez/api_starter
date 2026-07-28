@@ -255,7 +255,15 @@ Compose profiles: `dev`, `uat`, `prod`, `test`.
 Structured JSON is written to a daily rotated file under `LOGGER_DIRECTORY`
 (`storage/logs/log.<date>.log`) and, outside production, to stdout. Every log
 line inside a request carries `route_path`, `request_id`, `ip_address` and
-`method`. `RUST_LOG` overrides `LOGGER_LEVEL` when set.
+`method`.
+
+`LOGGER_LEVEL` takes one of `trace|debug|info|warn|error` and defaults to
+`info`. `RUST_LOG` overrides it when set, and accepts the full tracing filter
+syntax.
+
+`APP_ENVIRONMENT` takes one of `local|development|production` and defaults to
+`development`; only `production` turns the stdout logger off. Both variables
+reject anything else at start up rather than falling back to a default.
 
 ## Notes on the port
 
