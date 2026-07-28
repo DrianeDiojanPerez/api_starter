@@ -40,3 +40,25 @@ impl fmt::Debug for MaskedString {
         f.write_str("************")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn masks_the_value_in_every_representation() {
+        let secret = MaskedBytes::new("super-secret");
+
+        assert_eq!(format!("{secret:?}"), "************");
+        assert_eq!(format!("{secret}"), "************");
+        assert_eq!(
+            serde_json::to_string(&secret).expect("serializing should succeed"),
+            "\"********\""
+        );
+    }
+
+    #[test]
+    fn still_exposes_the_bytes_to_the_code_that_needs_them() {
+        assert_eq!(MaskedBytes::new("super-secret").expose(), b"super-secret");
+    }
+}

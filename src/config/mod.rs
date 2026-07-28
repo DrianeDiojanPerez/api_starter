@@ -128,3 +128,98 @@ fn parsed<T: FromStr>(key: &'static str) -> Result<Option<T>, ConfigError> {
             .map_err(|_| ConfigError::Invalid { key, value }),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builds_a_dsn_from_the_database_settings() {
+        let db = Db {
+            host: "database".to_owned(),
+            port: 5432,
+            database: "api_starter".to_owned(),
+            username: "postgres".to_owned(),
+            password: "password".to_owned(),
+            max_connections: 10,
+        };
+
+        assert_eq!(
+            db.to_url(),
+            "postgres://postgres:password@database:5432/api_starter"
+        );
+    }
+
+    #[test]
+    fn escapes_the_characters_that_would_break_the_dsn() {
+        let db = Db {
+            host: "database".to_owned(),
+            port: 5432,
+            database: "api_starter".to_owned(),
+            username: "user@corp".to_owned(),
+            password: "p@ss:w/rd?#".to_owned(),
+            max_connections: 10,
+        };
+
+        assert_eq!(
+            db.to_url(),
+            "postgres://user%40corp:p%40ss%3Aw%2Frd%3F%23@database:5432/api_starter"
+        );
+    }
+
+    #[test]
+    fn the_database_password_stays_out_of_the_debug_output() {
+        let db = Db {
+            host: "database".to_owned(),
+            port: 5432,
+            database: "api_starter".to_owned(),
+            username: "postgres".to_owned(),
+            password: "hunter2".to_owned(),
+            max_connections: 10,
+        };
+
+        assert!(!format!("{db:?}").contains("hunter2"));
+    }
+
+    #[test]
+    fn translates_the_numeric_log_levels_the_go_service_used() {
+        let level = |value: &str| {
+            Logger {
+                level: value.to_owned(),
+                directory: "storage/logs".to_owned(),
+            }
+            .directive()
+            .to_owned()
+        };
+
+        assert_eq!(level("-8"), "trace");
+        assert_eq!(level("-4"), "debug");
+        assert_eq!(level("0"), "info");
+        assert_eq!(level("4"), "warn");
+        assert_eq!(level("8"), "error");
+        // A tracing level name passes straight through.
+        assert_eq!(level("debug"), "debug");
+    }
+
+    #[test]
+    fn only_production_disables_the_stdout_logger() {
+        let deployment = |env: &str| Deployment {
+            name: "App_sample".to_owned(),
+            environment: env.to_owned(),
+            time_zone: "America/Belize".to_owned(),
+        };
+
+        assert!(deployment("production").is_production());
+        assert!(deployment("PRODUCTION").is_production());
+        assert!(!deployment("DEVELOPMENT").is_production());
+        assert!(!deployment("uat").is_production());
+    }
+
+    #[test]
+    fn the_jwt_secret_stays_out_of_the_debug_and_json_output() {
+        let jwt = Jwt::new("super-secret");
+
+        assert!(!format!("{jwt:?}").contains("super-secret"));
+        assert_eq!(jwt.secret().expose(), b"super-secret");
+    }
+}
