@@ -369,3 +369,60 @@ impl UserRepository for PgUserRepository {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_whitelisted_columns_reach_the_order_by_clause() {
+        assert_eq!(sort_column("email"), "u.email");
+        assert_eq!(sort_column("department"), "d.name");
+        assert_eq!(sort_column("status"), "us.status");
+        // Anything unknown, including an injection attempt, falls back.
+        assert_eq!(
+            sort_column("u.password; DROP TABLE iam.users"),
+            "u.user_name"
+        );
+        assert_eq!(sort_column(""), "u.user_name");
+    }
+
+    #[test]
+    fn the_sort_direction_is_never_taken_verbatim() {
+        assert_eq!(sort_order("asc"), "asc");
+        assert_eq!(sort_order("desc"), "desc");
+        assert_eq!(sort_order("; DELETE FROM iam.users"), "desc");
+    }
+
+    #[test]
+    fn known_filters_become_bound_parameters() {
+        let request = ListRequest::from_query(
+            "status=Active&department_id=1&role=Admin&first_name=App&nonsense=1",
+        );
+
+        let mut builder = QueryBuilder::<sqlx::Postgres>::new(COUNT_USER);
+        builder.push(" WHERE TRUE");
+        PgUserRepository::push_filters(&mut builder, &request);
+
+        let sql = builder.sql();
+
+        assert!(sql.contains("us.id = $1"));
+        assert!(sql.contains("u.department_id = $2"));
+        assert!(sql.contains("r.name = $3"));
+        assert!(sql.contains("u.first_name ILIKE $4"));
+        // No value is ever interpolated into the statement.
+        assert!(!sql.contains("Active"));
+        assert!(!sql.contains("nonsense"));
+    }
+
+    #[test]
+    fn an_unknown_status_name_is_dropped_rather_than_bound() {
+        let request = ListRequest::from_query("status=Imaginary");
+
+        let mut builder = QueryBuilder::<sqlx::Postgres>::new(COUNT_USER);
+        builder.push(" WHERE TRUE");
+        PgUserRepository::push_filters(&mut builder, &request);
+
+        assert!(!builder.sql().contains("us.id ="));
+    }
+}

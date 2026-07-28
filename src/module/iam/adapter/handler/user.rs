@@ -180,3 +180,79 @@ pub async fn delete(
         user_id,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::module::iam::core::domain::{
+        Company as DomainCompany, Department as DomainDepartment, Role, Status,
+    };
+
+    #[test]
+    fn flattens_the_domain_user_into_the_response_shape() {
+        let id = Uuid::new_v4();
+
+        let dto = User::from(domain::User {
+            id,
+            user_name: "admin".to_owned(),
+            avatar_id: "avatar.gif".to_owned(),
+            email: "admin@example.com".to_owned(),
+            password: "$2a$10$averysecrethash".to_owned(),
+            first_name: "App".to_owned(),
+            last_name: "admin".to_owned(),
+            status: Status {
+                id: 1,
+                status: "Active".to_owned(),
+            },
+            department: DomainDepartment {
+                id: 1,
+                name: "Administration".to_owned(),
+                company: DomainCompany {
+                    id: 1,
+                    name: "Example Company Ltd".to_owned(),
+                },
+            },
+            roles: vec![
+                Role {
+                    role_id: 1,
+                    name: "Admin".to_owned(),
+                },
+                Role {
+                    role_id: 3,
+                    name: "Staff".to_owned(),
+                },
+            ],
+        });
+
+        assert_eq!(dto.user_id, id);
+        assert_eq!(dto.status, "Active");
+        assert_eq!(dto.department.department_name, "Administration");
+        assert_eq!(dto.department.company.name, "Example Company Ltd");
+        assert_eq!(dto.roles, vec!["Admin".to_owned(), "Staff".to_owned()]);
+    }
+
+    #[test]
+    fn the_password_hash_never_reaches_the_response_body() {
+        let dto = User::from(domain::User {
+            id: Uuid::new_v4(),
+            user_name: "admin".to_owned(),
+            avatar_id: String::new(),
+            email: "admin@example.com".to_owned(),
+            password: "$2a$10$averysecrethash".to_owned(),
+            first_name: "App".to_owned(),
+            last_name: "admin".to_owned(),
+            status: Status {
+                id: 1,
+                status: "Active".to_owned(),
+            },
+            department: DomainDepartment::default(),
+            roles: Vec::new(),
+        });
+
+        let json = serde_json::to_string(&dto).expect("serializing should succeed");
+
+        assert!(!json.contains("averysecrethash"));
+        assert!(!json.contains("password"));
+    }
+}
