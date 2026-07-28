@@ -4,8 +4,8 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 bruno_dir := "api/bruno/API"
 
 # The DB_* variables come from .env and are expanded by the shell, not by just.
-database_url := '"postgres://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_DATABASE?sslmode=disable"'
-dbmate := "docker compose run --rm -T -e DATABASE_URL=" + database_url + " migrate"
+database_url := '"postgres://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_DATABASE"'
+sqlx := "DATABASE_URL=" + database_url + " cargo sqlx"
 
 # List every recipe.
 default:
@@ -29,10 +29,9 @@ build:
 test:
     cargo test --all-targets
 
-# Run everything, including the tests that need a migrated database.
-test-all: services migrate
-    TEST_DATABASE_URL="postgres://$DB_USERNAME:$DB_PASSWORD@127.0.0.1:$DB_PORT/$DB_DATABASE" \
-        cargo test --all-targets
+# Run everything, including the tests that need a database.
+test-all: services
+    TEST_DATABASE_URL={{ database_url }} cargo test --all-targets
 
 # Fail on any clippy warning.
 lint:
@@ -63,6 +62,8 @@ up:
 # Start only the backing services, for running the API on the host.
 services:
     docker compose --profile dev up -d database mail
+    @echo "waiting for postgres"
+    until docker exec api-starter-db pg_isready -U "$DB_USERNAME" -d "$DB_DATABASE" >/dev/null 2>&1; do sleep 1; done
 
 # Stop the dev stack.
 down:
@@ -84,37 +85,35 @@ docker-test:
 docker-build:
     docker compose --profile prod build prod
 
-# ──── Migrations (dbmate) ──────────────────────────────────
+# ──── Migrations (sqlx) ──────────────────────────────────
+#
+# Migrations are embedded in the binary and applied on start up unless
+# DB_RUN_MIGRATIONS=false. These recipes are for driving them by hand and
+# need sqlx-cli: just migrate-install
 
-# Apply every migration.
-migrate: migrate-iam
+# Install sqlx-cli, needed only by the recipes below.
+migrate-install:
+    cargo install sqlx-cli --version '~0.8' --no-default-features --features rustls,postgres --locked
 
-# Apply the iam migrations.
-migrate-iam:
-    {{ dbmate }} --migrations-dir=/db/migrations/iam up
+# Apply every pending migration.
+migrate:
+    {{ sqlx }} migrate run
 
-# Roll the last iam migration back.
-migrate-iam-down:
-    {{ dbmate }} --migrations-dir=/db/migrations/iam rollback
+# Revert the last applied migration.
+migrate-down:
+    {{ sqlx }} migrate revert
 
 # Show which migrations have been applied.
 migrate-status:
-    {{ dbmate }} --migrations-dir=/db/migrations/iam status
+    {{ sqlx }} migrate info
 
-# Drop the database. Destructive.
-migrate-drop: terminate-connections
-    {{ dbmate }} drop
+# Scaffold a reversible migration, for example: just migrate-new create_sessions_table
+migrate-new name:
+    {{ sqlx }} migrate add -r {{ name }}
 
-# Scaffold a migration, for example: just migrate-new iam create_sessions_table
-migrate-new module name:
-    ./scripts/migrate/dbmate.sh {{ module }} {{ name }}
-
-# Kick every open session off the database so it can be dropped.
-[private]
-terminate-connections:
-    docker exec api-starter-db psql -U "$DB_USERNAME" -d postgres \
-        -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_DATABASE' AND pid <> pg_backend_pid();" \
-        >/dev/null 2>&1 || true
+# Drop and recreate the database, then migrate. Destructive.
+migrate-reset:
+    {{ sqlx }} database reset -y
 
 # ──── API collection (bruno) ──────────────────────────────────
 
@@ -128,11 +127,8 @@ api-folder folder:
 
 # ──── Local setup ──────────────────────────────────
 
-# Copy .env, start the backing services and migrate.
+# Copy .env and start the backing services. The server migrates itself.
 setup:
     test -f .env || cp .env.example .env
     just services
-    @echo "waiting for postgres"
-    until docker exec api-starter-db pg_isready -U "$DB_USERNAME" -d "$DB_DATABASE" >/dev/null 2>&1; do sleep 1; done
-    just migrate
     @echo "ready, run: just run"

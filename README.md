@@ -17,7 +17,7 @@ Go service.
 | Tokens          | `jsonwebtoken` (HS256)                 |
 | Password hashes | `bcrypt`                               |
 | Mail            | `lettre`                               |
-| Migrations      | `dbmate` (unchanged from the Go service) |
+| Migrations      | `sqlx::migrate!`, embedded in the binary |
 
 `sqlx` runs with runtime checked queries on purpose, so neither `cargo build`
 nor the Docker image build needs a reachable database.
@@ -39,7 +39,7 @@ src/
     └── iam/                 users and permissions
         ├── core/            domain, ports, services
         └── adapter/         handlers and repositories
-migration/iam/               dbmate migrations
+migrations/                  sqlx migrations, embedded at compile time
 api/bruno/API/               Bruno request collection
 justfile                     task runner recipes
 ```
@@ -80,10 +80,11 @@ Every response uses one envelope:
 
 ```bash
 cp .env.example .env
-docker compose --profile dev up -d database mail
-make migrate-all-up
-docker compose --profile dev up --build dev
+just up
 ```
+
+The server applies the migrations itself on start up, so there is no separate
+migrate step.
 
 - API: http://localhost:3000
 - Mailhog UI: http://localhost:8025
@@ -93,18 +94,19 @@ The seeded administrator is `admin@example.com`.
 ## Running locally
 
 ```bash
-cp .env.example .env      # then set DB_HOST=127.0.0.1
-docker compose --profile dev up -d database mail
-make migrate-all-up
-cargo run
+just setup    # copies .env and starts postgres and mailhog
+just run
 ```
+
+`.env.example` points at `127.0.0.1`, so the host tooling works out of the
+box. Compose overrides `DB_HOST` and `MAIL_HOST` for the containerised app.
 
 ## Development
 
 `just` is the task runner. Run `just` on its own for the full list.
 
 ```bash
-just setup         # copy .env, start postgres and mailhog, migrate
+just setup         # copy .env, start postgres and mailhog
 just run           # cargo run
 just watch         # cargo watch -x run
 just test          # unit and HTTP tests, no infrastructure needed
@@ -116,8 +118,7 @@ just up / down / logs / ps
 just api           # run the Bruno collection against a running server
 ```
 
-A `Makefile` with the same migration targets is kept for parity with the Go
-repository.
+A `Makefile` with the same targets is kept for parity with the Go repository.
 
 ## Tests
 
@@ -133,12 +134,13 @@ Three layers, all runnable with one command each:
 and permission services, so the HTTP tests exercise the real middleware stack,
 extractors, routing and error rendering without any infrastructure.
 
-`tests/postgres.rs` **skips itself** unless `TEST_DATABASE_URL` points at a
-migrated database, which keeps `cargo test` green on a bare checkout:
+`tests/postgres.rs` **skips itself** unless `TEST_DATABASE_URL` is set, which
+keeps `cargo test` green on a bare checkout. An empty database is enough,
+since the tests apply the embedded migrations themselves:
 
 ```bash
 just test        # skips the database layer
-just test-all    # starts postgres, migrates, runs everything
+just test-all    # starts postgres and runs everything
 ```
 
 Those tests namespace every row they insert, so they are safe to run in
@@ -146,13 +148,25 @@ parallel and against a database that already holds the seed data.
 
 ## Migrations
 
-Migrations stay in dbmate format, one directory per module:
+Migrations live in `migrations/` as reversible sqlx pairs
+(`<version>_<name>.up.sql` and `.down.sql`) and are **compiled into the
+binary** by `sqlx::migrate!`. The production image therefore ships without any
+SQL files, and every environment runs byte for byte the same schema.
+
+The server applies whatever is pending when it starts. sqlx takes an advisory
+lock first, so several replicas booting together is safe. Set
+`DB_RUN_MIGRATIONS=false` to gate schema changes behind a separate step
+instead.
+
+To drive them by hand, install `sqlx-cli` once:
 
 ```bash
-just migrate                             # apply everything
-just migrate-iam-down                    # roll the last iam migration back
-just migrate-status                      # what has been applied
-just migrate-new iam create_foo_table    # scaffold a migration
+just migrate-install                    # cargo install sqlx-cli
+just migrate                            # apply what is pending
+just migrate-down                       # revert the last one
+just migrate-status                     # what has been applied
+just migrate-new create_foo_table       # scaffold a reversible pair
+just migrate-reset                      # drop, recreate, migrate (destructive)
 ```
 
 ## API collection
@@ -185,7 +199,7 @@ The `Dockerfile` is multi stage, matching the Go setup:
 - `builder` produces the release binary
 - `production` ships that binary on `debian:bookworm-slim` as a non root user
 
-Compose profiles: `dev`, `uat`, `prod`, `test`, `migrate`.
+Compose profiles: `dev`, `uat`, `prod`, `test`.
 
 ## Logging
 
