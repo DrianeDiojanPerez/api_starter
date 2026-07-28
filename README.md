@@ -40,6 +40,8 @@ src/
         ├── core/            domain, ports, services
         └── adapter/         handlers and repositories
 migration/iam/               dbmate migrations
+api/bruno/API/               Bruno request collection
+justfile                     task runner recipes
 ```
 
 ## Endpoints
@@ -99,22 +101,54 @@ cargo run
 
 ## Development
 
+`just` is the task runner. Run `just` on its own for the full list.
+
 ```bash
-make test     # cargo test --all-targets
-make lint     # cargo clippy --all-targets -- -D warnings
-make fmt      # cargo fmt --all
-make check    # fmt + lint + test
+just setup         # copy .env, start postgres and mailhog, migrate
+just run           # cargo run
+just watch         # cargo watch -x run
+just test          # cargo test --all-targets
+just lint          # cargo clippy --all-targets -- -D warnings
+just fmt           # cargo fmt --all
+just check         # fmt-check + lint + test
+just up / down / logs / ps
+just api           # run the Bruno collection against a running server
 ```
+
+A `Makefile` with the same migration targets is kept for parity with the Go
+repository.
 
 ## Migrations
 
 Migrations stay in dbmate format, one directory per module:
 
 ```bash
-make migrate-iam-up
-make migrate-iam-down
-./scripts/migrate/dbmate.sh iam create_something_table   # new migration
+just migrate                             # apply everything
+just migrate-iam-down                    # roll the last iam migration back
+just migrate-status                      # what has been applied
+just migrate-new iam create_foo_table    # scaffold a migration
 ```
+
+## API collection
+
+`api/bruno/API` is a [Bruno](https://usebruno.com) collection covering every
+endpoint, laid out as `auth/` and `iam/{user,permission}/`.
+
+Open the folder in Bruno and pick the `development` environment, or run it
+headless:
+
+```bash
+just api                # whole collection
+just api-folder auth    # one folder
+```
+
+`Login` stores `token`, `refresh_token` and `user_id` on the environment, and
+every other request reads them from there, so run it first.
+
+`Reset Password` is the one manual request: the reset token only exists in the
+mail `Forgot Password` sends, since the database holds a digest of it. Grab it
+from Mailhog on http://localhost:8025 and put it in the `reset_token`
+environment variable.
 
 ## Docker targets
 
