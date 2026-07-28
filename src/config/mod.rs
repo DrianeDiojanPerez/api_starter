@@ -82,6 +82,7 @@ impl AppConfig {
             username: string("DB_USERNAME").unwrap_or_else(|| "root".to_owned()),
             password: string("DB_PASSWORD").unwrap_or_else(|| "password".to_owned()),
             max_connections: parsed("DB_MAX_CONNECTIONS")?.unwrap_or(10),
+            run_migrations: parsed("DB_RUN_MIGRATIONS")?.unwrap_or(true),
         })
     }
 
@@ -142,6 +143,7 @@ mod tests {
             username: "postgres".to_owned(),
             password: "password".to_owned(),
             max_connections: 10,
+            run_migrations: true,
         };
 
         assert_eq!(
@@ -159,6 +161,7 @@ mod tests {
             username: "user@corp".to_owned(),
             password: "p@ss:w/rd?#".to_owned(),
             max_connections: 10,
+            run_migrations: true,
         };
 
         assert_eq!(
@@ -176,6 +179,7 @@ mod tests {
             username: "postgres".to_owned(),
             password: "hunter2".to_owned(),
             max_connections: 10,
+            run_migrations: true,
         };
 
         assert!(!format!("{db:?}").contains("hunter2"));

@@ -8,6 +8,9 @@ pub struct Db {
     pub username: String,
     pub password: String,
     pub max_connections: u32,
+    /// Apply pending migrations on start up. Turn it off to gate schema
+    /// changes behind a separate deploy step.
+    pub run_migrations: bool,
 }
 
 impl Db {
@@ -33,6 +36,7 @@ impl std::fmt::Debug for Db {
             .field("username", &self.username)
             .field("password", &MaskedString)
             .field("max_connections", &self.max_connections)
+            .field("run_migrations", &self.run_migrations)
             .finish()
     }
 }

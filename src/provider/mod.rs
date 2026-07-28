@@ -28,6 +28,12 @@ pub struct Provider {
 impl Provider {
     pub async fn inject_default(config: AppConfig) -> anyhow::Result<Self> {
         let database = Arc::new(Database::connect(&config.db).await?);
+
+        if config.db.run_migrations {
+            tracing::info!("applying pending migrations");
+            database.migrate().await?;
+        }
+
         let tx = TxManager::new(database.clone());
 
         let jwt: Arc<dyn TokenGenerator> = Arc::new(HmacTokenGenerator::new(config.jwt.secret()));

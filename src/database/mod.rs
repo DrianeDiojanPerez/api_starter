@@ -1,10 +1,15 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use sqlx::migrate::{MigrateError, Migrator};
 use sqlx::postgres::{PgPoolOptions, PgQueryResult};
 use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::config;
+
+/// Migrations are compiled into the binary, so the production image ships
+/// without the SQL files and every environment runs the exact same schema.
+pub static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
 
 /// Handle passed to every repository. Cloning is cheap, the pool is shared.
 #[derive(Clone)]
@@ -27,6 +32,13 @@ impl Database {
     /// pool themselves from `TEST_DATABASE_URL`.
     pub fn from_pool(pool: PgPool) -> Self {
         Self { pool }
+    }
+
+    /// Applies any migration this binary carries that the database has not
+    /// seen yet. sqlx takes an advisory lock first, so several replicas
+    /// starting at once is safe.
+    pub async fn migrate(&self) -> Result<(), MigrateError> {
+        MIGRATOR.run(&self.pool).await
     }
 
     pub fn pool(&self) -> &PgPool {
