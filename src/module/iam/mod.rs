@@ -4,32 +4,33 @@ mod service;
 
 pub use service::Services;
 
+use std::sync::Arc;
+
 use axum::routing::{delete, get, patch, post};
 use axum::{middleware, Router};
 
 use crate::module::iam::adapter::handler::{permission, user};
-use crate::provider::Provider;
+use crate::server::middlewares::authentication::authenticate;
 use crate::server::middlewares::authorization::{rbac_guard, RbacState};
+use crate::shared::auth::Auth;
+use crate::shared::rbac::Engine;
 
 /// Every route in this module requires an authenticated identity, so the auth
 /// middleware is applied once at the module boundary.
-pub fn routes(provider: &Provider) -> Router {
+pub fn routes(services: &Services, auth: Arc<dyn Auth>, rbac: Arc<dyn Engine>) -> Router {
     Router::new()
-        .merge(user_routes(provider))
-        .merge(permission_routes(provider))
-        .route_layer(middleware::from_fn_with_state(
-            provider.auth.clone(),
-            crate::server::middlewares::authentication::authenticate,
-        ))
+        .merge(user_routes(services, rbac))
+        .merge(permission_routes(services))
+        .route_layer(middleware::from_fn_with_state(auth, authenticate))
 }
 
-fn user_routes(provider: &Provider) -> Router {
-    let state = provider.iam.user.clone();
+fn user_routes(services: &Services, rbac: Arc<dyn Engine>) -> Router {
+    let state = services.user.clone();
 
     let index = Router::new()
         .route("/v1/users", get(user::index))
         .route_layer(middleware::from_fn_with_state(
-            RbacState::new(provider.rbac.clone(), "Users.View All"),
+            RbacState::new(rbac, "Users.View All"),
             rbac_guard,
         ))
         .with_state(state.clone());
@@ -45,8 +46,8 @@ fn user_routes(provider: &Provider) -> Router {
         .merge(index)
 }
 
-fn permission_routes(provider: &Provider) -> Router {
+fn permission_routes(services: &Services) -> Router {
     Router::new()
         .route("/v1/permissions", get(permission::index))
-        .with_state(provider.iam.permission.clone())
+        .with_state(services.permission.clone())
 }

@@ -2,6 +2,7 @@ pub mod middlewares;
 mod mount;
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use axum::http::header;
 use axum::{middleware, Router};
@@ -10,13 +11,34 @@ use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetReques
 use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::trace::TraceLayer;
 
+use crate::module::iam;
 use crate::provider::Provider;
+use crate::shared::auth::Auth;
 use crate::shared::errdef::Error;
+use crate::shared::rbac::Engine;
+
+/// What the routes actually need. Keeping this separate from the provider lets
+/// the router be built from test doubles, without a database behind it.
+pub struct Modules {
+    pub auth: Arc<dyn Auth>,
+    pub rbac: Arc<dyn Engine>,
+    pub iam: iam::Services,
+}
+
+impl From<&Provider> for Modules {
+    fn from(provider: &Provider) -> Self {
+        Self {
+            auth: provider.auth.clone(),
+            rbac: provider.rbac.clone(),
+            iam: provider.iam.clone(),
+        }
+    }
+}
 
 /// Builds the application router with the global middleware stack applied in
 /// the same order the Go server used.
-pub fn router(provider: &Provider) -> Router {
-    mount::mount(provider)
+pub fn router(modules: &Modules) -> Router {
+    mount::mount(modules)
         .fallback(route_not_found)
         .layer(middleware::from_fn(
             middlewares::request_context::request_context,
@@ -37,7 +59,7 @@ async fn route_not_found() -> Error {
 
 pub async fn serve(provider: Provider) -> anyhow::Result<()> {
     let addr = SocketAddr::from(([0, 0, 0, 0], provider.config.server.port));
-    let app = router(&provider);
+    let app = router(&Modules::from(&provider));
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
 

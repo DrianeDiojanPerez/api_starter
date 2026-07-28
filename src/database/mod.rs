@@ -23,6 +23,12 @@ impl Database {
         Ok(Self { pool })
     }
 
+    /// Wraps an existing pool. Used by the integration tests, which build the
+    /// pool themselves from `TEST_DATABASE_URL`.
+    pub fn from_pool(pool: PgPool) -> Self {
+        Self { pool }
+    }
+
     pub fn pool(&self) -> &PgPool {
         &self.pool
     }
