@@ -12,9 +12,8 @@ pub struct LoggerGuard(#[allow(dead_code)] WorkerGuard);
 /// Installs the global tracing subscriber: structured JSON to a daily rotated
 /// file, plus stdout while outside of production.
 pub fn init(cfg: &LoggerConfig, deployment: &Deployment) -> LoggerGuard {
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-        EnvFilter::new(format!("api_starter={0},tower_http={0}", cfg.directive()))
-    });
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new(format!("api_starter={0},tower_http={0}", cfg.level)));
 
     let file_appender = tracing_appender::rolling::Builder::new()
         .rotation(tracing_appender::rolling::Rotation::DAILY)
