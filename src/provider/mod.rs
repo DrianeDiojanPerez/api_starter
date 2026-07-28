@@ -30,7 +30,6 @@ impl Provider {
         let database = Arc::new(Database::connect(&config.db).await?);
 
         if config.db.run_migrations {
-            tracing::info!("applying pending migrations");
             database.migrate().await?;
         }
 

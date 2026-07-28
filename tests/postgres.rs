@@ -48,8 +48,8 @@ async fn pool() -> Option<PgPool> {
         .await
         .expect("TEST_DATABASE_URL is set but the database is unreachable");
 
-    api_starter::database::MIGRATOR
-        .run(&pool)
+    Database::from_pool(pool.clone())
+        .migrate()
         .await
         .expect("the embedded migrations should apply");
 
