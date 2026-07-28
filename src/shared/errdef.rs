@@ -190,3 +190,113 @@ impl IntoResponse for Error {
         (status, axum::Json(response::Response::error(body))).into_response()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use axum::body::to_bytes;
+    use serde_json::Value;
+
+    async fn render(error: Error) -> (StatusCode, Value) {
+        let response = error.into_response();
+        let status = response.status();
+
+        let bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("the body should be readable");
+
+        (
+            status,
+            serde_json::from_slice(&bytes).expect("the body should be json"),
+        )
+    }
+
+    #[test]
+    fn maps_every_domain_code_to_a_status() {
+        assert_eq!(status_for(code::NOT_FOUND), StatusCode::NOT_FOUND);
+        assert_eq!(status_for(code::UNAUTHORIZED), StatusCode::UNAUTHORIZED);
+        assert_eq!(status_for(code::BAD_REQUEST), StatusCode::BAD_REQUEST);
+        assert_eq!(status_for(code::RESOURCE_CONFLICT), StatusCode::CONFLICT);
+        assert_eq!(
+            status_for(code::UNPROCESSABLE),
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
+        assert_eq!(status_for(code::FORBIDDEN), StatusCode::FORBIDDEN);
+        assert_eq!(status_for(code::UNKNOWN), StatusCode::INTERNAL_SERVER_ERROR);
+        // Anything unmapped falls back to a bad request rather than a 500.
+        assert_eq!(status_for(4242), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn renders_an_app_error_in_the_shared_envelope() {
+        let (status, body) = render(Error::not_found("user does not exists")).await;
+
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert_eq!(body["data"], Value::Null);
+        assert_eq!(body["error"]["code"], 404);
+        assert_eq!(body["error"]["message"], "user does not exists");
+        assert!(body["error"].get("errors").is_none());
+    }
+
+    #[tokio::test]
+    async fn renders_field_violations_on_a_validation_error() {
+        let error = Error::validation("failed payload validation")
+            .add_violation("email", "field must be of email format")
+            .add_violation("password", "field is required and cannot be empty")
+            .add_violation("password", "field is too short");
+
+        let (status, body) = render(error).await;
+
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(body["error"]["code"], 422);
+        assert_eq!(
+            body["error"]["errors"]["email"][0],
+            "field must be of email format"
+        );
+        assert_eq!(
+            body["error"]["errors"]["password"].as_array().map(Vec::len),
+            Some(2),
+            "violations on the same field accumulate"
+        );
+    }
+
+    #[tokio::test]
+    async fn never_leaks_the_cause_of_an_unknown_error() {
+        let (status, body) = render(Error::unknown("connection refused to 10.0.0.1:5432")).await;
+
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body["error"]["message"], "internal server error");
+        assert!(!body.to_string().contains("10.0.0.1"));
+    }
+
+    #[test]
+    fn keeps_the_cause_on_the_log_representation() {
+        let error = Error::unauthorized("invalid token").with_cause("signature mismatch");
+
+        assert_eq!(
+            error.to_string(),
+            "code 1002: invalid token (cause: signature mismatch)"
+        );
+    }
+
+    #[test]
+    fn a_database_failure_converts_to_an_unknown_error() {
+        let error: Error = sqlx::Error::RowNotFound.into();
+
+        match error {
+            Error::App(err) => assert_eq!(err.code, code::UNKNOWN),
+            other => panic!("expected an app error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn adding_a_violation_to_an_app_error_is_a_no_op() {
+        let error = Error::bad_request("nope").add_violation("field", "message");
+
+        match error {
+            Error::App(err) => assert_eq!(err.message, "nope"),
+            other => panic!("expected an app error, got {other:?}"),
+        }
+    }
+}
