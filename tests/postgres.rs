@@ -20,9 +20,7 @@ use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 use api_starter::database::{Database, TxManager};
-use api_starter::module::iam::adapter::repository::{
-    PgPermissionRepository, PgUserRepository,
-};
+use api_starter::module::iam::adapter::repository::{PgPermissionRepository, PgUserRepository};
 use api_starter::module::iam::core::domain::{
     CreateUser, DomainError, ACTIVE_USER_STATUS, DELETED_USER_STATUS,
 };

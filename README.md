@@ -1,9 +1,12 @@
-# API Starter (Rust)
+# API Starter
 
-Rust port of the API Starter backend, scoped to the **auth**, **user** and
-**permission** parts of the IAM module. Built with axum, sqlx and tracing,
-keeping the hexagonal layout (`module/<name>/{core,adapter}`) of the original
-Go service.
+Starting point for a Rust API service: **authentication**, **users** and
+**permissions**, ready to build the rest of a product on top of. Built with
+axum, sqlx and tracing.
+
+Ported from the Go API Starter backend, keeping its hexagonal layout
+(`module/<name>/{core,adapter}`) so new modules drop in beside `auth` and
+`iam` without touching anything else.
 
 ## Stack
 

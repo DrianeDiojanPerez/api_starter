@@ -83,7 +83,7 @@ services:
       - "${APP_PORT}:${APP_PORT}"
     restart: unless-stopped
     volumes:
-      - /var/log/uat_api_base:/app/storage/logs
+      - /var/log/uat_api_starter:/app/storage/logs
     depends_on:
       mail:
         condition: service_started
