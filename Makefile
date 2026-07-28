@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: run build test lint fmt check up down logs migrate migrate-down migrate-status
+.PHONY: run build test lint fmt check up down logs migrate migrate-module migrate-down migrate-status
 
 DATABASE_URL := postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_DATABASE)
 
@@ -27,11 +27,21 @@ logs:
 	@docker compose --profile dev logs -f dev
 
 # ──── Migrations (sqlx) ──────────────────────────────────
-# The server applies these on start up. Use these targets to drive them by
-# hand: cargo install sqlx-cli --version '~0.8' --no-default-features --features rustls,postgres
+# One directory per module under migrations/. The server applies all of them on
+# start up. Use these targets to drive them by hand:
+# cargo install sqlx-cli --version '~0.8' --no-default-features --features rustls,postgres
+#
+# Pass MODULE to target one: make migrate-module MODULE=iam
+MODULE ?= iam
+
 migrate:
-	@DATABASE_URL=$(DATABASE_URL) cargo sqlx migrate run
+	@for dir in migrations/*/; do \
+		echo "==> $$(basename $$dir)"; \
+		DATABASE_URL=$(DATABASE_URL) cargo sqlx migrate run --source $$dir --ignore-missing; \
+	done
+migrate-module:
+	@DATABASE_URL=$(DATABASE_URL) cargo sqlx migrate run --source migrations/$(MODULE) --ignore-missing
 migrate-down:
-	@DATABASE_URL=$(DATABASE_URL) cargo sqlx migrate revert
+	@DATABASE_URL=$(DATABASE_URL) cargo sqlx migrate revert --source migrations/$(MODULE) --ignore-missing
 migrate-status:
-	@DATABASE_URL=$(DATABASE_URL) cargo sqlx migrate info
+	@DATABASE_URL=$(DATABASE_URL) cargo sqlx migrate info --source migrations/$(MODULE)

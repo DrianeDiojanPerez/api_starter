@@ -87,33 +87,49 @@ docker-build:
 
 # ──── Migrations (sqlx) ──────────────────────────────────
 #
-# Migrations are embedded in the binary and applied on start up unless
-# DB_RUN_MIGRATIONS=false. These recipes are for driving them by hand and
-# need sqlx-cli: just migrate-install
+# One directory per module under migrations/, so a module can be migrated on
+# its own. The server applies all of them on start up unless
+# DB_RUN_MIGRATIONS=false; these recipes drive them by hand and need sqlx-cli:
+# just migrate-install
 
 # Install sqlx-cli, needed only by the recipes below.
 migrate-install:
     cargo install sqlx-cli --version '~0.8' --no-default-features --features rustls,postgres --locked
 
-# Apply every pending migration.
+# Apply every module's pending migrations, in registry order.
 migrate:
-    {{ sqlx }} migrate run
+    cargo run --quiet -- migrate
 
-# Revert the last applied migration.
-migrate-down:
-    {{ sqlx }} migrate revert
+# Apply one module, for example: just migrate-module iam
+migrate-module module:
+    cargo run --quiet -- migrate {{ module }}
 
-# Show which migrations have been applied.
-migrate-status:
-    {{ sqlx }} migrate info
+# Revert the last migration of one module, for example: just migrate-down iam
+migrate-down module:
+    {{ sqlx }} migrate revert --source migrations/{{ module }} --ignore-missing
 
-# Scaffold a reversible migration, for example: just migrate-new create_sessions_table
-migrate-new name:
-    {{ sqlx }} migrate add -r {{ name }}
+# Show what has been applied, for one module or all of them.
+migrate-status module="":
+    if [ -n "{{ module }}" ]; then \
+        {{ sqlx }} migrate info --source migrations/{{ module }}; \
+    else \
+        for dir in migrations/*/; do \
+            echo "==> $(basename "$dir")"; \
+            {{ sqlx }} migrate info --source "$dir"; \
+        done; \
+    fi
 
-# Drop and recreate the database, then migrate. Destructive.
+# Scaffold a reversible pair, for example: just migrate-new catalog create_catalogs_table
+# A brand new module also needs a line in src/database/migrations.rs.
+migrate-new module name:
+    mkdir -p migrations/{{ module }}
+    {{ sqlx }} migrate add -r --source migrations/{{ module }} {{ name }}
+
+# Drop and recreate the database, then migrate every module. Destructive.
 migrate-reset:
-    {{ sqlx }} database reset -y
+    {{ sqlx }} database drop -y
+    {{ sqlx }} database create
+    just migrate
 
 # ──── API collection (bruno) ──────────────────────────────────
 
