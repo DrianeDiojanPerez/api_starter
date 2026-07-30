@@ -33,7 +33,6 @@ pub fn verify_password(hashed: &str, password: &str) -> Result<(), Error> {
     }
 }
 
-/// 32 random bytes, hex encoded. This is the value mailed to the user.
 pub fn random_token() -> String {
     let mut bytes = [0u8; 32];
     rand::rng().fill_bytes(&mut bytes);

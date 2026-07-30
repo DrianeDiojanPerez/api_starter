@@ -1,6 +1,5 @@
 use std::fmt;
 
-/// Secret bytes that never leak through `Debug`, `Display` or JSON output.
 #[derive(Clone)]
 pub struct MaskedBytes(Vec<u8>);
 

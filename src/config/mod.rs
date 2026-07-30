@@ -14,8 +14,6 @@ pub use server::{Deployment, Environment, Server};
 
 use crate::package::env;
 
-/// Loading configuration is nothing more than reading the environment, so the
-/// two failures are the same ones `env` already describes.
 pub type ConfigError = env::Error;
 
 /// Aggregated application configuration, loaded once at start up and shared

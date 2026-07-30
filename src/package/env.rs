@@ -20,7 +20,6 @@ pub enum Error {
     Invalid { key: &'static str, value: String },
 }
 
-/// Reads a variable, treating "unset" and "set to whitespace" the same way.
 pub fn string(key: &'static str) -> Option<String> {
     match env::var(key) {
         Ok(value) if !value.trim().is_empty() => Some(value.trim().to_owned()),
@@ -28,56 +27,46 @@ pub fn string(key: &'static str) -> Option<String> {
     }
 }
 
-/// Reads a variable, falling back when it is unset or blank.
 pub fn string_or(key: &'static str, fallback: &str) -> String {
     string(key).unwrap_or_else(|| fallback.to_owned())
 }
 
-/// Reads a variable that the application cannot start without.
 pub fn required(key: &'static str) -> Result<String, Error> {
     string(key).ok_or(Error::Missing { key })
 }
 
-/// Reads an unsigned 16 bit number, the size of a port.
 pub fn u16(key: &'static str) -> Result<Option<u16>, Error> {
     parsed(key)
 }
 
-/// Reads an unsigned 16 bit number, falling back when it is unset or blank.
 pub fn u16_or(key: &'static str, fallback: u16) -> Result<u16, Error> {
     Ok(parsed(key)?.unwrap_or(fallback))
 }
 
-/// Reads an unsigned 32 bit number, the size of a pool or a limit.
 pub fn u32(key: &'static str) -> Result<Option<u32>, Error> {
     parsed(key)
 }
 
-/// Reads an unsigned 32 bit number, falling back when it is unset or blank.
 pub fn u32_or(key: &'static str, fallback: u32) -> Result<u32, Error> {
     Ok(parsed(key)?.unwrap_or(fallback))
 }
 
-/// Reads a signed 64 bit number, the size of a duration in seconds.
 pub fn i64(key: &'static str) -> Result<Option<i64>, Error> {
     parsed(key)
 }
 
-/// Reads a signed 64 bit number, falling back when it is unset or blank.
 pub fn i64_or(key: &'static str, fallback: i64) -> Result<i64, Error> {
     Ok(parsed(key)?.unwrap_or(fallback))
 }
 
-/// Reads one of a fixed set of named values, falling back to the type's own
-/// default. This is the one generic read, because a package that must not know
-/// about `config` cannot name the enums that live there.
+/// The one generic reader: a package that must not know about `config` cannot
+/// name the enums that live there.
 pub fn variant_or_default<T: FromStr + Default>(key: &'static str) -> Result<T, Error> {
     Ok(parsed(key)?.unwrap_or_default())
 }
 
-/// The single parse, shared by every typed reader above. Deliberately private:
-/// callers ask for the type they want by name rather than turning this into a
-/// generic escape hatch.
+/// Private on purpose, so callers ask for a concrete type by name instead of
+/// reaching for a generic escape hatch.
 fn parsed<T: FromStr>(key: &'static str) -> Result<Option<T>, Error> {
     match string(key) {
         None => Ok(None),
@@ -88,8 +77,6 @@ fn parsed<T: FromStr>(key: &'static str) -> Result<Option<T>, Error> {
     }
 }
 
-/// Reads a boolean, accepting the spellings people actually write in a `.env`
-/// file rather than only the two `bool::from_str` knows about.
 pub fn boolean(key: &'static str) -> Result<Option<bool>, Error> {
     let Some(value) = string(key) else {
         return Ok(None);
@@ -102,14 +89,10 @@ pub fn boolean(key: &'static str) -> Result<Option<bool>, Error> {
     }
 }
 
-/// Reads a boolean, falling back when it is unset or blank.
 pub fn boolean_or(key: &'static str, fallback: bool) -> Result<bool, Error> {
     Ok(boolean(key)?.unwrap_or(fallback))
 }
 
-/// Reads a comma separated list, trimming each entry and dropping the empty
-/// ones. A value that holds nothing but separators counts as unset, so
-/// `FOO=" , "` falls back rather than producing an empty list.
 pub fn vec(key: &'static str) -> Option<Vec<String>> {
     let value = string(key)?;
 
@@ -127,7 +110,6 @@ pub fn vec(key: &'static str) -> Option<Vec<String>> {
     }
 }
 
-/// Reads a comma separated list, falling back when it is unset or blank.
 pub fn vec_or(key: &'static str, fallback: &[&str]) -> Vec<String> {
     vec(key).unwrap_or_else(|| fallback.iter().map(|entry| (*entry).to_owned()).collect())
 }
