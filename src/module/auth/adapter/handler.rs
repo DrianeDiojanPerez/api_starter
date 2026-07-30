@@ -6,11 +6,11 @@ use serde::Deserialize;
 use validator::Validate;
 
 use crate::module::auth::core::domain::LoginResponse;
-use crate::shared::auth::Auth;
-use crate::shared::errdef::Error;
-use crate::shared::extract::ValidatedJson;
-use crate::shared::response::{self, Response};
-use crate::shared::validation::strong_password;
+use crate::package::auth::Auth;
+use crate::package::errdef::Error;
+use crate::package::extract::ValidatedJson;
+use crate::package::response::{self, Response};
+use crate::package::validation::strong_password;
 
 pub type AuthState = Arc<dyn Auth>;
 

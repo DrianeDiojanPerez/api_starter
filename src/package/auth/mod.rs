@@ -7,8 +7,8 @@ pub use store::{PostgresAuthStore, Store};
 use async_trait::async_trait;
 use uuid::Uuid;
 
+use crate::package::errdef::Error;
 use crate::sdk::{AuthenticationTokens, User};
-use crate::shared::errdef::Error;
 
 #[async_trait]
 pub trait Auth: Send + Sync {

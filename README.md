@@ -31,12 +31,11 @@ src/
 ├── main.rs                  entrypoint
 ├── config/                  environment backed configuration
 ├── database/                connection pool and transaction manager
-├── package/                 reusable building blocks, no app knowledge
+├── package/                 everything the modules share, see below
 ├── provider/                composition root, wires every dependency
 ├── sdk/                     types shared across modules
 ├── server/                  router, global middleware, error handling
 │   └── middlewares/         authentication, authorization, request context
-├── shared/                  auth, rbac, jwt, mail, errors, pagination
 └── module/
     ├── auth/                login, refresh, forgot and reset password
     └── iam/                 users and permissions
@@ -49,16 +48,30 @@ justfile                     task runner recipes
 
 ### The `package` folder
 
-`package` holds the plumbing that could be lifted into another service
-unchanged. Everything in it depends only on the standard library and third
-party crates, never on `module`, `shared` or `config`, and that one way
-dependency is what the folder is for.
+Everything the modules build on lives in `package`, so there is one answer to
+"where does this go": if it is not a module, it is a package.
 
-| Module    | What it holds                                             |
-| --------- | --------------------------------------------------------- |
-| `env`     | typed environment reads with fallbacks                    |
-| `crypto`  | password hashing, random tokens, token digests            |
-| `masked`  | secret wrappers that stay redacted in logs and JSON       |
+| Module       | What it holds                                          |
+| ------------ | ------------------------------------------------------ |
+| `auth`       | login, refresh, password recovery and reset            |
+| `crypto`     | password hashing, random tokens, token digests         |
+| `emailer`    | SMTP transport and the embedded templates              |
+| `env`        | typed environment reads with fallbacks                 |
+| `errdef`     | the error type and how it renders as HTTP              |
+| `extract`    | JSON and validating extractors                         |
+| `jwt`        | HS256 signing and validation                           |
+| `logger`     | tracing subscriber, JSON to a daily rotated file       |
+| `masked`     | secret wrappers that stay redacted in logs and JSON    |
+| `pagination` | list requests, filters, sorting and the page envelope  |
+| `rbac`       | permission checks, `Resource.Permission` actions       |
+| `response`   | the single response envelope                           |
+| `utils`      | password and token helpers over `crypto`               |
+| `validation` | password rules and flattened validator output          |
+
+The lower half of that list is liftable into another service more or less
+unchanged; the upper half encodes decisions specific to this API. Nothing
+enforces the difference, so if you copy `env` or `crypto` out, check what
+comes with it.
 
 `config` is the only caller of `env`, so the rules about blank values,
 trimming and fallbacks are written once:
@@ -79,8 +92,8 @@ the edge rather than cast into shape later. The parse itself is private: there
 is no generic `parsed::<T>` to reach for, and that is what keeps the call sites
 reading as concrete types.
 
-`variant_or_default` is the one generic reader, because a package that must not
-know about `config` cannot name the enums that live there.
+`variant_or_default` is the one generic reader, because `env` cannot name the
+enums that live in `config`.
 
 A value that is present but unparseable is an error, not a silent fallback: a
 typo in a deployment should stop the process at start up rather than quietly

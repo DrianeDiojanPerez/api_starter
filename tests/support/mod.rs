@@ -18,12 +18,12 @@ use api_starter::module::iam::core::domain::{
     Company, CreateUser, Department, Permission, Role, Status, User,
 };
 use api_starter::module::iam::core::ports::{PermissionService, UpdateUser, UserService};
+use api_starter::package::auth::Auth;
+use api_starter::package::errdef::Error;
+use api_starter::package::pagination::{Data, ListRequest};
+use api_starter::package::rbac::Engine;
 use api_starter::sdk::{AuthenticationTokens, User as SdkUser};
 use api_starter::server::{self, Modules};
-use api_starter::shared::auth::Auth;
-use api_starter::shared::errdef::Error;
-use api_starter::shared::pagination::{Data, ListRequest};
-use api_starter::shared::rbac::Engine;
 
 pub const VALID_TOKEN: &str = "a-valid-token";
 

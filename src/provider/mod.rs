@@ -3,10 +3,10 @@ use std::sync::Arc;
 use crate::config::AppConfig;
 use crate::database::{Database, TxManager};
 use crate::module::iam;
-use crate::shared::auth::{Auth, AuthService, PostgresAuthStore};
-use crate::shared::emailer::{Emailer, SmtpEmailer};
-use crate::shared::jwt::{HmacTokenGenerator, TokenGenerator};
-use crate::shared::rbac::{Engine, PostgresRbacStore, RbacEngine};
+use crate::package::auth::{Auth, AuthService, PostgresAuthStore};
+use crate::package::emailer::{Emailer, SmtpEmailer};
+use crate::package::jwt::{HmacTokenGenerator, TokenGenerator};
+use crate::package::rbac::{Engine, PostgresRbacStore, RbacEngine};
 
 const SUPER_ROLE: &str = "Admin";
 

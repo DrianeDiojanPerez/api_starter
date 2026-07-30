@@ -4,8 +4,8 @@ use sqlx::PgConnection;
 use uuid::Uuid;
 
 use crate::module::iam::core::domain::{CreateUser, DomainError, Permission, User};
-use crate::shared::errdef::Error;
-use crate::shared::pagination::{Data, ListRequest};
+use crate::package::errdef::Error;
+use crate::package::pagination::{Data, ListRequest};
 
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]

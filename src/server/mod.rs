@@ -12,10 +12,10 @@ use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::trace::TraceLayer;
 
 use crate::module::iam;
+use crate::package::auth::Auth;
+use crate::package::errdef::Error;
+use crate::package::rbac::Engine;
 use crate::provider::Provider;
-use crate::shared::auth::Auth;
-use crate::shared::errdef::Error;
-use crate::shared::rbac::Engine;
 
 pub struct Modules {
     pub auth: Arc<dyn Auth>,

@@ -6,12 +6,12 @@ use chrono::{Duration, Utc};
 use serde_json::Value;
 use uuid::Uuid;
 
+use crate::package::auth::{Auth, Store};
+use crate::package::emailer::Emailer;
+use crate::package::errdef::Error;
+use crate::package::jwt::{Claims, TokenGenerator};
+use crate::package::utils;
 use crate::sdk::{AuthenticationTokens, User};
-use crate::shared::auth::{Auth, Store};
-use crate::shared::emailer::Emailer;
-use crate::shared::errdef::Error;
-use crate::shared::jwt::{Claims, TokenGenerator};
-use crate::shared::utils;
 
 const PASSWORD_RESET_TTL_MINUTES: i64 = 15;
 
@@ -207,11 +207,11 @@ mod tests {
 
     use async_trait::async_trait;
 
+    use crate::package::emailer::EmailerError;
+    use crate::package::errdef::code;
+    use crate::package::jwt::HmacTokenGenerator;
     use crate::package::masked::MaskedBytes;
     use crate::sdk::PasswordReset;
-    use crate::shared::emailer::EmailerError;
-    use crate::shared::errdef::code;
-    use crate::shared::jwt::HmacTokenGenerator;
 
     const PASSWORD: &str = "Sup3r$ecret";
 

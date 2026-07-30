@@ -11,7 +11,7 @@ use crate::module::iam::core::domain::{
     DELETED_USER_STATUS,
 };
 use crate::module::iam::core::ports::{UpdateUser, UserRepository};
-use crate::shared::pagination::ListRequest;
+use crate::package::pagination::ListRequest;
 
 const SELECT_USER: &str = "SELECT u.id, u.user_name, u.avatar_id, u.email, u.password, \
      u.first_name, u.last_name, us.id AS status_id, us.status, \

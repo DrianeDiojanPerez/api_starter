@@ -1,5 +1,5 @@
 use crate::package::crypto;
-use crate::shared::errdef::Error;
+use crate::package::errdef::Error;
 
 pub use crypto::random_token;
 

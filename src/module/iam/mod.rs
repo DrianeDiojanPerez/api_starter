@@ -10,10 +10,10 @@ use axum::routing::{delete, get, patch, post};
 use axum::{middleware, Router};
 
 use crate::module::iam::adapter::handler::{permission, user};
+use crate::package::auth::Auth;
+use crate::package::rbac::Engine;
 use crate::server::middlewares::authentication::authenticate;
 use crate::server::middlewares::authorization::{rbac_guard, RbacState};
-use crate::shared::auth::Auth;
-use crate::shared::rbac::Engine;
 
 pub fn routes(services: &Services, auth: Arc<dyn Auth>, rbac: Arc<dyn Engine>) -> Router {
     Router::new()

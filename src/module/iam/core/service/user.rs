@@ -6,9 +6,9 @@ use uuid::Uuid;
 use crate::database::TxManager;
 use crate::module::iam::core::domain::{CreateUser, DomainError, User, ACTIVE_USER_STATUS};
 use crate::module::iam::core::ports::{UpdateUser, UserRepository, UserService};
-use crate::shared::errdef::Error;
-use crate::shared::pagination::{Data, ListRequest};
-use crate::shared::{utils, validation};
+use crate::package::errdef::Error;
+use crate::package::pagination::{Data, ListRequest};
+use crate::package::{utils, validation};
 
 pub struct UserServiceImpl {
     trm: TxManager,
@@ -156,7 +156,7 @@ mod tests {
 
     use crate::database::Database;
     use crate::module::iam::core::domain::{Company, Department, Role, Status};
-    use crate::shared::errdef::code;
+    use crate::package::errdef::code;
 
     /// A pool that never connects. The read paths under test never reach it,
     /// and a test that accidentally opens a transaction fails loudly.

@@ -5,4 +5,3 @@ pub mod package;
 pub mod provider;
 pub mod sdk;
 pub mod server;
-pub mod shared;

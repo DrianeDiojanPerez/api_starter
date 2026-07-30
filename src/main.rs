@@ -1,8 +1,8 @@
 use api_starter::config::AppConfig;
 use api_starter::database::{migrations, Database};
+use api_starter::package::logger;
 use api_starter::provider::Provider;
 use api_starter::server;
-use api_starter::shared::logger;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

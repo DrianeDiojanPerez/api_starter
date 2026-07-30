@@ -13,10 +13,10 @@ use api_starter::module::iam::core::ports::{
     PermissionRepository, UpdateUser, UserRepository, UserService,
 };
 use api_starter::module::iam::core::service::UserServiceImpl;
-use api_starter::shared::auth::{PostgresAuthStore, Store as AuthStore};
-use api_starter::shared::pagination::ListRequest;
-use api_starter::shared::rbac::{Engine, PostgresRbacStore, RbacEngine, Store as RbacStore};
-use api_starter::shared::utils;
+use api_starter::package::auth::{PostgresAuthStore, Store as AuthStore};
+use api_starter::package::pagination::ListRequest;
+use api_starter::package::rbac::{Engine, PostgresRbacStore, RbacEngine, Store as RbacStore};
+use api_starter::package::utils;
 
 /// Each test gets its own pool: `#[tokio::test]` builds a runtime per test,
 /// and a sqlx pool cannot outlive the runtime that created it. Migrating is

@@ -4,7 +4,7 @@ use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use serde::Serialize;
 
-use crate::shared::errdef::Error;
+use crate::package::errdef::Error;
 
 pub const DEFAULT_PER_PAGE: i64 = 10;
 pub const MAX_PER_PAGE: i64 = 100;

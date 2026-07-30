@@ -4,7 +4,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::shared::rbac::{split_action, Engine, Store};
+use crate::package::rbac::{split_action, Engine, Store};
 
 pub struct RbacEngine {
     super_role: String,

@@ -5,8 +5,8 @@ use axum::http::request::Parts;
 use axum::middleware::Next;
 use axum::response::Response;
 
-use crate::shared::auth::{Auth, AuthUser};
-use crate::shared::errdef::Error;
+use crate::package::auth::{Auth, AuthUser};
+use crate::package::errdef::Error;
 
 const BEARER: &str = "Bearer ";
 

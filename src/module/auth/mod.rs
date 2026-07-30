@@ -7,7 +7,7 @@ use axum::routing::post;
 use axum::Router;
 
 use crate::module::auth::adapter::handler;
-use crate::shared::auth::Auth;
+use crate::package::auth::Auth;
 
 pub fn routes(auth: Arc<dyn Auth>) -> Router {
     Router::new()

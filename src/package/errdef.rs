@@ -4,7 +4,7 @@ use std::fmt;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
-use crate::shared::response;
+use crate::package::response;
 
 /// Domain error codes, kept identical to the Go service so API consumers do
 /// not have to change.

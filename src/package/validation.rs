@@ -2,7 +2,7 @@
 use validator::Validate;
 use validator::{ValidationError as FieldError, ValidationErrors, ValidationErrorsKind};
 
-use crate::shared::errdef::Error;
+use crate::package::errdef::Error;
 
 pub fn strong_password(password: &str) -> Result<(), FieldError> {
     let has_min_len = password.chars().count() >= 8;
