@@ -1,34 +1,28 @@
-use rand::RngCore;
-use sha2::{Digest, Sha256};
+//! Turns the crypto primitives in `package::crypto` into the error type the
+//! rest of the application speaks.
+//!
+//! The mapping is the interesting part: a wrong password and an unreadable
+//! stored hash both become the same 401, so a caller cannot tell the two apart
+//! and use that to probe for accounts.
 
+use crate::package::crypto;
 use crate::shared::errdef::Error;
 
-/// Cost matches the Go service so hashes stay interchangeable between both
-/// implementations during a migration.
-const BCRYPT_COST: u32 = bcrypt::DEFAULT_COST;
+pub use crypto::random_token;
 
 pub fn hash_password(password: &str) -> Result<String, Error> {
-    bcrypt::hash(password, BCRYPT_COST).map_err(Error::unknown)
+    crypto::hash_password(password).map_err(Error::unknown)
 }
 
 pub fn compare_hash_and_password(hashed: &str, password: &str) -> Result<(), Error> {
-    match bcrypt::verify(password, hashed) {
-        Ok(true) => Ok(()),
-        Ok(false) => Err(Error::unauthorized("password mismatch")),
-        Err(err) => Err(Error::unauthorized("password mismatch").with_cause(err)),
-    }
+    crypto::verify_password(hashed, password).map_err(|error| match error {
+        crypto::Error::Mismatch => Error::unauthorized("password mismatch"),
+        other => Error::unauthorized("password mismatch").with_cause(other),
+    })
 }
 
-/// 32 random bytes, hex encoded. This is the value mailed to the user.
-pub fn random_token() -> String {
-    let mut bytes = [0u8; 32];
-    rand::rng().fill_bytes(&mut bytes);
-    hex::encode(bytes)
-}
-
-/// Only the digest is persisted, so a leaked table cannot be replayed.
 pub fn hash_token(raw_token: &str) -> String {
-    hex::encode(Sha256::digest(raw_token.as_bytes()))
+    crypto::token_digest(raw_token)
 }
 
 #[cfg(test)]
@@ -41,6 +35,22 @@ mod tests {
 
         assert!(compare_hash_and_password(&hash, "Sup3r$ecret").is_ok());
         assert!(compare_hash_and_password(&hash, "wrong").is_err());
+    }
+
+    #[test]
+    fn a_bad_password_and_a_bad_hash_look_the_same_to_the_caller() {
+        let hash = hash_password("Sup3r$ecret").expect("hashing should succeed");
+
+        let visible = |error: Error| match error {
+            Error::App(app) => (app.code, app.message),
+            Error::Validation(_) => panic!("a rejected password is not a validation error"),
+        };
+
+        let mismatch = visible(compare_hash_and_password(&hash, "wrong").expect_err("rejects"));
+        let malformed =
+            visible(compare_hash_and_password("not-a-hash", "Sup3r$ecret").expect_err("rejects"));
+
+        assert_eq!(mismatch, malformed);
     }
 
     #[test]
