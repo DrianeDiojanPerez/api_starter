@@ -31,6 +31,7 @@ src/
 ├── main.rs                  entrypoint
 ├── config/                  environment backed configuration
 ├── database/                connection pool and transaction manager
+├── package/                 reusable building blocks, no app knowledge
 ├── provider/                composition root, wires every dependency
 ├── sdk/                     types shared across modules
 ├── server/                  router, global middleware, error handling
@@ -45,6 +46,34 @@ migrations/<module>/         sqlx migrations, one directory per module
 api/bruno/API/               Bruno request collection
 justfile                     task runner recipes
 ```
+
+### The `package` folder
+
+`package` holds the plumbing that could be lifted into another service
+unchanged. Everything in it depends only on the standard library and third
+party crates, never on `module`, `shared` or `config`, and that one way
+dependency is what the folder is for.
+
+| Module    | What it holds                                             |
+| --------- | --------------------------------------------------------- |
+| `env`     | typed environment reads with fallbacks                    |
+| `crypto`  | password hashing, random tokens, token digests            |
+| `masked`  | secret wrappers that stay redacted in logs and JSON       |
+
+`config` is the only caller of `env`, so the rules about blank values,
+trimming and fallbacks are written once:
+
+```rust
+env::string_or("APP_NAME", "App_sample")   // unset or blank falls back
+env::required("JWT_SECRET")?               // refuses to start without it
+env::parsed_or("APP_PORT", 3000)?          // any FromStr type
+env::flag_or("DB_RUN_MIGRATIONS", true)?   // 1/yes/on as well as true
+env::list_or("CORS_ORIGINS", &["*"])       // comma separated, trimmed
+```
+
+A value that is present but unparseable is an error, not a silent fallback: a
+typo in a deployment should stop the process at start up rather than quietly
+running with a default nobody asked for.
 
 ## Endpoints
 
