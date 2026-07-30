@@ -62,7 +62,16 @@ network:
 
 # Start the API, database and mail catcher.
 up: network
-    docker compose --profile dev up --build -d
+    docker compose --profile dev up --build
+
+# Start the stack without rebuilding, for when nothing in the image changed.
+start: network
+    docker compose --profile dev up -d --no-build
+
+# Rebuild the image from scratch, ignoring every cached layer.
+rebuild: network
+    docker compose --profile dev build --no-cache dev
+    docker compose --profile dev up
 
 # Start only the backing services, for running the API on the host.
 services: network
@@ -73,6 +82,10 @@ services: network
 # Stop the dev stack.
 down:
     docker compose --profile dev down
+
+# Stop the dev stack and drop its volumes, including the cargo caches.
+down-hard:
+    docker compose --profile dev down -v
 
 # Follow the API logs.
 logs:
