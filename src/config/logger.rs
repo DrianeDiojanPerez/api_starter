@@ -73,7 +73,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_the_numeric_levels_the_go_service_used() {
+    fn rejects_a_numeric_level() {
         for numeric in ["-8", "-4", "0", "4", "8"] {
             assert_eq!(
                 numeric.parse::<LogLevel>(),
