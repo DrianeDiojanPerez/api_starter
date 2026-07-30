@@ -94,7 +94,7 @@ impl Engine for RbacEngine {
 mod tests {
     use super::*;
 
-    use crate::sdk::Permission;
+    use crate::package::rbac::Permission;
 
     struct FakeStore {
         roles: Vec<String>,

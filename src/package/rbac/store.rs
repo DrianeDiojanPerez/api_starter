@@ -5,7 +5,7 @@ use sqlx::Row;
 use uuid::Uuid;
 
 use crate::database::Database;
-use crate::sdk::Permission;
+use crate::package::rbac::Permission;
 
 #[async_trait]
 pub trait Store: Send + Sync {

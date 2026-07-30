@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::sdk::AuthenticationTokens;
+use crate::package::auth::AuthenticationTokens;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LoginResponse {

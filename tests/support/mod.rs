@@ -18,11 +18,10 @@ use api_starter::module::iam::core::domain::{
     Company, CreateUser, Department, Permission, Role, Status, User,
 };
 use api_starter::module::iam::core::ports::{PermissionService, UpdateUser, UserService};
-use api_starter::package::auth::Auth;
+use api_starter::package::auth::{Auth, AuthenticationTokens, Identity};
 use api_starter::package::errdef::Error;
 use api_starter::package::pagination::{Data, ListRequest};
 use api_starter::package::rbac::Engine;
-use api_starter::sdk::{AuthenticationTokens, User as SdkUser};
 use api_starter::server::{self, Modules};
 
 pub const VALID_TOKEN: &str = "a-valid-token";
@@ -37,7 +36,7 @@ pub struct Calls {
 }
 
 pub struct FakeAuth {
-    pub user: SdkUser,
+    pub user: Identity,
 }
 
 #[async_trait]
@@ -68,7 +67,7 @@ impl Auth for FakeAuth {
         Err(Error::unauthorized("invalid or malformed refresh token"))
     }
 
-    async fn get_identity(&self, access_token: &str) -> Result<SdkUser, Error> {
+    async fn get_identity(&self, access_token: &str) -> Result<Identity, Error> {
         if access_token == VALID_TOKEN {
             return Ok(self.user.clone());
         }
@@ -179,13 +178,13 @@ impl PermissionService for FakePermissionService {
 pub struct TestApp {
     pub router: Router,
     pub calls: Arc<Calls>,
-    pub user: SdkUser,
+    pub user: Identity,
 }
 
 impl TestApp {
     pub fn with_permissions(allowed: &[&str]) -> Self {
         let user = a_domain_user();
-        let identity = SdkUser {
+        let identity = Identity {
             id: user.id,
             email: user.email.clone(),
             user_name: user.user_name.clone(),

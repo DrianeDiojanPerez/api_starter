@@ -1,7 +1,9 @@
 mod engine;
+mod permission;
 mod store;
 
 pub use engine::RbacEngine;
+pub use permission::Permission;
 pub use store::{PostgresRbacStore, Store};
 
 use async_trait::async_trait;

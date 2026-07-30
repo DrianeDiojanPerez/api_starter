@@ -33,7 +33,6 @@ src/
 ├── database/                connection pool and transaction manager
 ├── package/                 everything the modules share, see below
 ├── provider/                composition root, wires every dependency
-├── sdk/                     types shared across modules
 ├── server/                  router, global middleware, error handling
 │   └── middlewares/         authentication, authorization, request context
 └── module/
@@ -53,7 +52,7 @@ Everything the modules build on lives in `package`, so there is one answer to
 
 | Module       | What it holds                                          |
 | ------------ | ------------------------------------------------------ |
-| `auth`       | login, refresh, password recovery and reset            |
+| `auth`       | login, refresh, password recovery, the `Identity` type |
 | `crypto`     | password hashing, random tokens, token digests         |
 | `emailer`    | SMTP transport and the embedded templates              |
 | `env`        | typed environment reads with fallbacks                 |

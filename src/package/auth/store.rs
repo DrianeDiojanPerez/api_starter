@@ -4,12 +4,12 @@ use sqlx::Row;
 use uuid::Uuid;
 
 use crate::database::Database;
-use crate::sdk::{PasswordReset, User};
+use crate::package::auth::{Identity, PasswordReset};
 
 #[async_trait]
 pub trait Store: Send + Sync {
-    async fn find_user_by_id(&self, user_id: Uuid) -> Result<Option<User>, sqlx::Error>;
-    async fn find_user_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error>;
+    async fn find_user_by_id(&self, user_id: Uuid) -> Result<Option<Identity>, sqlx::Error>;
+    async fn find_user_by_email(&self, email: &str) -> Result<Option<Identity>, sqlx::Error>;
     async fn create_password_reset(&self, email: &str, token: &str) -> Result<(), sqlx::Error>;
     async fn reset_password(&self, email: &str, new_password: &str) -> Result<(), sqlx::Error>;
     async fn find_password_by_token(
@@ -42,14 +42,14 @@ impl PostgresAuthStore {
         rows.into_iter().map(|row| row.try_get("name")).collect()
     }
 
-    async fn enrich(&self, row: Option<PgRow>) -> Result<Option<User>, sqlx::Error> {
+    async fn enrich(&self, row: Option<PgRow>) -> Result<Option<Identity>, sqlx::Error> {
         let Some(row) = row else {
             return Ok(None);
         };
 
         let id: Uuid = row.try_get("id")?;
 
-        Ok(Some(User {
+        Ok(Some(Identity {
             id,
             email: row.try_get("email")?,
             user_name: row.try_get("user_name")?,
@@ -63,7 +63,7 @@ const SELECT_USER: &str = "SELECT u.id, u.email, u.user_name, u.password FROM ia
 
 #[async_trait]
 impl Store for PostgresAuthStore {
-    async fn find_user_by_id(&self, user_id: Uuid) -> Result<Option<User>, sqlx::Error> {
+    async fn find_user_by_id(&self, user_id: Uuid) -> Result<Option<Identity>, sqlx::Error> {
         let row = sqlx::query(&format!("{SELECT_USER} WHERE u.id = $1"))
             .bind(user_id)
             .fetch_optional(self.db.pool())
@@ -72,7 +72,7 @@ impl Store for PostgresAuthStore {
         self.enrich(row).await
     }
 
-    async fn find_user_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error> {
+    async fn find_user_by_email(&self, email: &str) -> Result<Option<Identity>, sqlx::Error> {
         let row = sqlx::query(&format!("{SELECT_USER} WHERE u.email = $1"))
             .bind(email)
             .fetch_optional(self.db.pool())

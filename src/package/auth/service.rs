@@ -7,11 +7,11 @@ use serde_json::Value;
 use uuid::Uuid;
 
 use crate::package::auth::{Auth, Store};
+use crate::package::auth::{AuthenticationTokens, Identity};
 use crate::package::crypto;
 use crate::package::emailer::Emailer;
 use crate::package::errdef::Error;
 use crate::package::jwt::{Claims, TokenGenerator};
-use crate::sdk::{AuthenticationTokens, User};
 
 const PASSWORD_RESET_TTL_MINUTES: i64 = 15;
 
@@ -43,7 +43,7 @@ impl AuthService {
         }
     }
 
-    fn generate_tokens(&self, user: &User) -> Result<AuthenticationTokens, Error> {
+    fn generate_tokens(&self, user: &Identity) -> Result<AuthenticationTokens, Error> {
         let now = Utc::now();
 
         let access_claims = Claims::from([
@@ -89,7 +89,7 @@ impl AuthService {
             .ok_or_else(|| Error::unauthorized(INVALID_REFRESH_TOKEN))
     }
 
-    async fn require_user_by_id(&self, user_id: Uuid) -> Result<User, Error> {
+    async fn require_user_by_id(&self, user_id: Uuid) -> Result<Identity, Error> {
         self.store
             .find_user_by_id(user_id)
             .await
@@ -129,7 +129,7 @@ impl Auth for AuthService {
         self.generate_tokens(&user)
     }
 
-    async fn get_identity(&self, access_token: &str) -> Result<User, Error> {
+    async fn get_identity(&self, access_token: &str) -> Result<Identity, Error> {
         let user_id = self.user_id_from(access_token)?;
 
         self.require_user_by_id(user_id).await
@@ -207,24 +207,24 @@ mod tests {
 
     use async_trait::async_trait;
 
+    use crate::package::auth::PasswordReset;
     use crate::package::emailer::EmailerError;
     use crate::package::errdef::code;
     use crate::package::jwt::HmacTokenGenerator;
     use crate::package::masked::MaskedBytes;
-    use crate::sdk::PasswordReset;
 
     const PASSWORD: &str = "Sup3r$ecret";
 
     #[derive(Default)]
     struct FakeStore {
-        users: Vec<User>,
+        users: Vec<Identity>,
         resets: Mutex<Vec<PasswordReset>>,
         password_updates: Mutex<Vec<(String, String)>>,
         deleted_resets: Mutex<Vec<String>>,
     }
 
     impl FakeStore {
-        fn with_user(user: User) -> Self {
+        fn with_user(user: Identity) -> Self {
             Self {
                 users: vec![user],
                 ..Self::default()
@@ -242,11 +242,11 @@ mod tests {
 
     #[async_trait]
     impl Store for FakeStore {
-        async fn find_user_by_id(&self, user_id: Uuid) -> Result<Option<User>, sqlx::Error> {
+        async fn find_user_by_id(&self, user_id: Uuid) -> Result<Option<Identity>, sqlx::Error> {
             Ok(self.users.iter().find(|u| u.id == user_id).cloned())
         }
 
-        async fn find_user_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error> {
+        async fn find_user_by_email(&self, email: &str) -> Result<Option<Identity>, sqlx::Error> {
             Ok(self.users.iter().find(|u| u.email == email).cloned())
         }
 
@@ -310,8 +310,8 @@ mod tests {
         }
     }
 
-    fn a_user() -> User {
-        User {
+    fn a_user() -> Identity {
+        Identity {
             id: Uuid::new_v4(),
             email: "admin@example.com".to_owned(),
             user_name: "admin".to_owned(),
