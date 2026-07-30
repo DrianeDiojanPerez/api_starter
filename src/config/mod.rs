@@ -12,16 +12,11 @@ pub use logger::{LogLevel, Logger};
 pub use mail::Mail;
 pub use server::{Deployment, Environment, Server};
 
-use std::env;
-use std::str::FromStr;
+use crate::package::env;
 
-#[derive(Debug, thiserror::Error)]
-pub enum ConfigError {
-    #[error("environment variable `{key}` is required")]
-    Missing { key: &'static str },
-    #[error("environment variable `{key}` has an invalid value: {value}")]
-    Invalid { key: &'static str, value: String },
-}
+/// Loading configuration is nothing more than reading the environment, so the
+/// two failures are the same ones `env` already describes.
+pub type ConfigError = env::Error;
 
 /// Aggregated application configuration, loaded once at start up and shared
 /// with every handler through the provider.
@@ -55,78 +50,63 @@ impl AppConfig {
 
     fn load_server() -> Result<Server, ConfigError> {
         Ok(Server {
-            port: parsed("APP_PORT")?.unwrap_or(3000),
+            port: env::parsed_or("APP_PORT", 3000)?,
         })
     }
 
     fn load_logger() -> Result<Logger, ConfigError> {
         Ok(Logger {
-            level: parsed("LOGGER_LEVEL")?.unwrap_or_default(),
-            directory: string("LOGGER_DIRECTORY").unwrap_or_else(|| "storage/logs".to_owned()),
+            level: env::parsed_or_default("LOGGER_LEVEL")?,
+            directory: env::string_or("LOGGER_DIRECTORY", "storage/logs"),
         })
     }
 
     fn load_deployment() -> Result<Deployment, ConfigError> {
         Ok(Deployment {
-            name: string("APP_NAME").unwrap_or_else(|| "App_sample".to_owned()),
-            environment: parsed("APP_ENVIRONMENT")?.unwrap_or_default(),
-            time_zone: string("APP_TIMEZONE").unwrap_or_else(|| "America/Belize".to_owned()),
+            name: env::string_or("APP_NAME", "App_sample"),
+            environment: env::parsed_or_default("APP_ENVIRONMENT")?,
+            time_zone: env::string_or("APP_TIMEZONE", "America/Belize"),
         })
     }
 
     fn load_db() -> Result<Db, ConfigError> {
         Ok(Db {
-            host: string("DB_HOST").unwrap_or_else(|| "127.0.0.1".to_owned()),
-            port: parsed("DB_PORT")?.unwrap_or(5432),
-            database: string("DB_DATABASE").unwrap_or_else(|| "api_starter".to_owned()),
-            username: string("DB_USERNAME").unwrap_or_else(|| "root".to_owned()),
-            password: string("DB_PASSWORD").unwrap_or_else(|| "password".to_owned()),
-            max_connections: parsed("DB_MAX_CONNECTIONS")?.unwrap_or(10),
-            run_migrations: parsed("DB_RUN_MIGRATIONS")?.unwrap_or(true),
+            host: env::string_or("DB_HOST", "127.0.0.1"),
+            port: env::parsed_or("DB_PORT", 5432)?,
+            database: env::string_or("DB_DATABASE", "api_starter"),
+            username: env::string_or("DB_USERNAME", "root"),
+            password: env::string_or("DB_PASSWORD", "password"),
+            max_connections: env::parsed_or("DB_MAX_CONNECTIONS", 10)?,
+            run_migrations: env::flag_or("DB_RUN_MIGRATIONS", true)?,
         })
     }
 
     fn load_mail() -> Result<Mail, ConfigError> {
         Ok(Mail {
-            host: string("MAIL_HOST").unwrap_or_else(|| "mail".to_owned()),
-            port: parsed("MAIL_PORT")?.unwrap_or(1025),
-            username: string("MAIL_USERNAME").unwrap_or_default(),
-            password: string("MAIL_PASSWORD").unwrap_or_default(),
-            from_address: string("MAIL_FROM_ADDRESS")
-                .unwrap_or_else(|| "noreply@example.com".to_owned()),
-            from_name: string("MAIL_FROM_NAME").unwrap_or_else(|| "noreply".to_owned()),
+            host: env::string_or("MAIL_HOST", "mail"),
+            port: env::parsed_or("MAIL_PORT", 1025)?,
+            username: env::string("MAIL_USERNAME").unwrap_or_default(),
+            password: env::string("MAIL_PASSWORD").unwrap_or_default(),
+            from_address: env::string_or("MAIL_FROM_ADDRESS", "noreply@example.com"),
+            from_name: env::string_or("MAIL_FROM_NAME", "noreply"),
         })
     }
 
     fn load_jwt() -> Result<Jwt, ConfigError> {
-        let secret = string("JWT_SECRET").ok_or(ConfigError::Missing { key: "JWT_SECRET" })?;
-        Ok(Jwt::new(secret))
+        Ok(Jwt::new(env::required("JWT_SECRET")?))
     }
 
     fn load_auth() -> Result<Auth, ConfigError> {
         Ok(Auth {
-            access_token_ttl_in_seconds: parsed("AUTHENTICATION_ACCESS_TOKEN_TTL_SECONDS")?
-                .unwrap_or(3600),
-            refresh_token_ttl_in_seconds: parsed("AUTHENTICATION_REFRESH_TOKEN_TTL_SECONDS")?
-                .unwrap_or(604_800),
+            access_token_ttl_in_seconds: env::parsed_or(
+                "AUTHENTICATION_ACCESS_TOKEN_TTL_SECONDS",
+                3600,
+            )?,
+            refresh_token_ttl_in_seconds: env::parsed_or(
+                "AUTHENTICATION_REFRESH_TOKEN_TTL_SECONDS",
+                604_800,
+            )?,
         })
-    }
-}
-
-fn string(key: &'static str) -> Option<String> {
-    match env::var(key) {
-        Ok(value) if !value.trim().is_empty() => Some(value.trim().to_owned()),
-        _ => None,
-    }
-}
-
-fn parsed<T: FromStr>(key: &'static str) -> Result<Option<T>, ConfigError> {
-    match string(key) {
-        None => Ok(None),
-        Some(value) => value
-            .parse::<T>()
-            .map(Some)
-            .map_err(|_| ConfigError::Invalid { key, value }),
     }
 }
 
