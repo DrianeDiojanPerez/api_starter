@@ -7,10 +7,10 @@ use serde_json::Value;
 use uuid::Uuid;
 
 use crate::package::auth::{Auth, Store};
+use crate::package::crypto;
 use crate::package::emailer::Emailer;
 use crate::package::errdef::Error;
 use crate::package::jwt::{Claims, TokenGenerator};
-use crate::package::utils;
 use crate::sdk::{AuthenticationTokens, User};
 
 const PASSWORD_RESET_TTL_MINUTES: i64 = 15;
@@ -114,7 +114,7 @@ impl Auth for AuthService {
             .map_err(Error::unknown)?
             .ok_or_else(|| Error::unauthorized(INVALID_CREDENTIALS))?;
 
-        if utils::compare_hash_and_password(&user.password, password).is_err() {
+        if crypto::compare_hash_and_password(&user.password, password).is_err() {
             tracing::debug!("Password Comparison Failed");
             return Err(Error::unauthorized(INVALID_CREDENTIALS));
         }
@@ -149,11 +149,11 @@ impl Auth for AuthService {
             .await
             .map_err(Error::unknown)?;
 
-        let token = utils::random_token();
+        let token = crypto::random_token();
 
         // Only the digest is stored, the raw token travels by email.
         self.store
-            .create_password_reset(email, &utils::hash_token(&token))
+            .create_password_reset(email, &crypto::hash_token(&token))
             .await
             .map_err(Error::unknown)?;
 
@@ -173,7 +173,7 @@ impl Auth for AuthService {
     async fn reset_password(&self, token: &str, new_password: &str) -> Result<(), Error> {
         let password_reset = self
             .store
-            .find_password_by_token(&utils::hash_token(token))
+            .find_password_by_token(&crypto::hash_token(token))
             .await
             .map_err(Error::unknown)?
             .ok_or_else(|| Error::bad_request("invalid or expired token"))?;
@@ -182,7 +182,7 @@ impl Auth for AuthService {
             return Err(Error::bad_request("invalid or expired token"));
         }
 
-        let hashed_password = utils::hash_password(new_password)?;
+        let hashed_password = crypto::hash_password(new_password)?;
 
         self.store
             .reset_password(&password_reset.email, &hashed_password)
@@ -315,7 +315,7 @@ mod tests {
             id: Uuid::new_v4(),
             email: "admin@example.com".to_owned(),
             user_name: "admin".to_owned(),
-            password: utils::hash_password(PASSWORD).expect("hashing should succeed"),
+            password: crypto::hash_password(PASSWORD).expect("hashing should succeed"),
             roles: vec!["Admin".to_owned()],
         }
     }
@@ -509,7 +509,7 @@ mod tests {
         let reset = stored.first().expect("a reset should be stored");
 
         assert_ne!(reset.token, raw_token, "the raw token must not be stored");
-        assert_eq!(reset.token, utils::hash_token(raw_token));
+        assert_eq!(reset.token, crypto::hash_token(raw_token));
     }
 
     #[tokio::test]
@@ -550,7 +550,7 @@ mod tests {
         let store = Arc::new(FakeStore::with_user(user.clone()));
         let (service, _) = service_with(store.clone(), Arc::new(FakeMailer::default()));
 
-        store.push_reset(&user.email, &utils::hash_token("raw-token"), Utc::now());
+        store.push_reset(&user.email, &crypto::hash_token("raw-token"), Utc::now());
 
         service
             .reset_password("raw-token", "N3wP@ssword")
@@ -561,7 +561,7 @@ mod tests {
         let (email, hash) = updates.first().expect("the password should be updated");
 
         assert_eq!(email, &user.email);
-        assert!(utils::compare_hash_and_password(hash, "N3wP@ssword").is_ok());
+        assert!(crypto::compare_hash_and_password(hash, "N3wP@ssword").is_ok());
         assert!(store.resets.lock().unwrap().is_empty());
     }
 
@@ -573,7 +573,7 @@ mod tests {
 
         store.push_reset(
             &user.email,
-            &utils::hash_token("raw-token"),
+            &crypto::hash_token("raw-token"),
             Utc::now() - Duration::minutes(PASSWORD_RESET_TTL_MINUTES + 1),
         );
 

@@ -10,5 +10,4 @@ pub mod masked;
 pub mod pagination;
 pub mod rbac;
 pub mod response;
-pub mod utils;
 pub mod validation;

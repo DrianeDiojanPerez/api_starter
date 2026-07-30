@@ -1,29 +1,23 @@
 use rand::RngCore;
 use sha2::{Digest, Sha256};
 
+use crate::package::errdef::Error;
+
 /// Cost matches the Go service so hashes stay interchangeable between both
 /// implementations during a migration.
 const BCRYPT_COST: u32 = bcrypt::DEFAULT_COST;
 
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("could not hash the password: {0}")]
-    Hash(#[source] bcrypt::BcryptError),
-    #[error("the stored hash could not be read: {0}")]
-    Malformed(#[source] bcrypt::BcryptError),
-    #[error("the password does not match the stored hash")]
-    Mismatch,
-}
-
 pub fn hash_password(password: &str) -> Result<String, Error> {
-    bcrypt::hash(password, BCRYPT_COST).map_err(Error::Hash)
+    bcrypt::hash(password, BCRYPT_COST).map_err(Error::unknown)
 }
 
-pub fn verify_password(hashed: &str, password: &str) -> Result<(), Error> {
+/// A wrong password and an unreadable stored hash return the same error, so a
+/// caller cannot tell them apart and use the difference to probe for accounts.
+pub fn compare_hash_and_password(hashed: &str, password: &str) -> Result<(), Error> {
     match bcrypt::verify(password, hashed) {
         Ok(true) => Ok(()),
-        Ok(false) => Err(Error::Mismatch),
-        Err(error) => Err(Error::Malformed(error)),
+        Ok(false) => Err(Error::unauthorized("password mismatch")),
+        Err(error) => Err(Error::unauthorized("password mismatch").with_cause(error)),
     }
 }
 
@@ -34,7 +28,7 @@ pub fn random_token() -> String {
 }
 
 /// Only the digest is persisted, so a leaked table cannot be replayed.
-pub fn token_digest(raw_token: &str) -> String {
+pub fn hash_token(raw_token: &str) -> String {
     hex::encode(Sha256::digest(raw_token.as_bytes()))
 }
 
@@ -46,11 +40,8 @@ mod tests {
     fn verifies_a_hashed_password() {
         let hash = hash_password("Sup3r$ecret").expect("hashing should succeed");
 
-        assert!(verify_password(&hash, "Sup3r$ecret").is_ok());
-        assert!(matches!(
-            verify_password(&hash, "wrong"),
-            Err(Error::Mismatch)
-        ));
+        assert!(compare_hash_and_password(&hash, "Sup3r$ecret").is_ok());
+        assert!(compare_hash_and_password(&hash, "wrong").is_err());
     }
 
     #[test]
@@ -59,21 +50,29 @@ mod tests {
         let second = hash_password("Sup3r$ecret").expect("hashing should succeed");
 
         assert_ne!(first, second, "bcrypt salts each hash");
-        assert!(verify_password(&second, "Sup3r$ecret").is_ok());
+        assert!(compare_hash_and_password(&second, "Sup3r$ecret").is_ok());
     }
 
     #[test]
-    fn a_hash_that_is_not_a_hash_is_reported_as_malformed() {
-        assert!(matches!(
-            verify_password("not-a-bcrypt-hash", "Sup3r$ecret"),
-            Err(Error::Malformed(_))
-        ));
+    fn a_bad_password_and_a_bad_hash_look_the_same_to_the_caller() {
+        let hash = hash_password("Sup3r$ecret").expect("hashing should succeed");
+
+        let visible = |error: Error| match error {
+            Error::App(app) => (app.code, app.message),
+            Error::Validation(_) => panic!("a rejected password is not a validation error"),
+        };
+
+        let mismatch = visible(compare_hash_and_password(&hash, "wrong").expect_err("rejects"));
+        let malformed =
+            visible(compare_hash_and_password("not-a-hash", "Sup3r$ecret").expect_err("rejects"));
+
+        assert_eq!(mismatch, malformed);
     }
 
     #[test]
-    fn digests_tokens_deterministically() {
-        assert_eq!(token_digest("abc"), token_digest("abc"));
-        assert_ne!(token_digest("abc"), token_digest("abd"));
+    fn hashes_tokens_deterministically() {
+        assert_eq!(hash_token("abc"), hash_token("abc"));
+        assert_ne!(hash_token("abc"), hash_token("abd"));
     }
 
     #[test]

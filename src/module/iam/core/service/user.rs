@@ -8,7 +8,7 @@ use crate::module::iam::core::domain::{CreateUser, DomainError, User, ACTIVE_USE
 use crate::module::iam::core::ports::{UpdateUser, UserRepository, UserService};
 use crate::package::errdef::Error;
 use crate::package::pagination::{Data, ListRequest};
-use crate::package::{utils, validation};
+use crate::package::{crypto, validation};
 
 pub struct UserServiceImpl {
     trm: TxManager,
@@ -66,7 +66,7 @@ impl UserService for UserServiceImpl {
 
     async fn create(&self, new_user: CreateUser) -> Result<Uuid, Error> {
         let interim_user = CreateUser {
-            password: utils::hash_password(&new_user.password)?,
+            password: crypto::hash_password(&new_user.password)?,
             status: ACTIVE_USER_STATUS,
             ..new_user
         };
@@ -100,7 +100,7 @@ impl UserService for UserServiceImpl {
                 Error::validation("invalid payload fields").add_violation("password", message)
             })?;
 
-            fields.password = Some(utils::hash_password(password)?);
+            fields.password = Some(crypto::hash_password(password)?);
         }
 
         let mut tx = self.trm.begin().await.map_err(Error::unknown)?;

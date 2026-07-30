@@ -65,7 +65,6 @@ Everything the modules build on lives in `package`, so there is one answer to
 | `pagination` | list requests, filters, sorting and the page envelope  |
 | `rbac`       | permission checks, `Resource.Permission` actions       |
 | `response`   | the single response envelope                           |
-| `utils`      | password and token helpers over `crypto`               |
 | `validation` | password rules and flattened validator output          |
 
 The lower half of that list is liftable into another service more or less

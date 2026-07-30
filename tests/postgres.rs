@@ -14,9 +14,9 @@ use api_starter::module::iam::core::ports::{
 };
 use api_starter::module::iam::core::service::UserServiceImpl;
 use api_starter::package::auth::{PostgresAuthStore, Store as AuthStore};
+use api_starter::package::crypto;
 use api_starter::package::pagination::ListRequest;
 use api_starter::package::rbac::{Engine, PostgresRbacStore, RbacEngine, Store as RbacStore};
-use api_starter::package::utils;
 
 /// Each test gets its own pool: `#[tokio::test]` builds a runtime per test,
 /// and a sqlx pool cannot outlive the runtime that created it. Migrating is
@@ -621,7 +621,7 @@ async fn the_service_hashes_the_password_before_storing_it() {
         .expect("the user should exist");
 
     assert_ne!(stored.password, "Sup3r$ecret");
-    assert!(utils::compare_hash_and_password(&stored.password, "Sup3r$ecret").is_ok());
+    assert!(crypto::compare_hash_and_password(&stored.password, "Sup3r$ecret").is_ok());
 }
 
 #[tokio::test]
@@ -682,7 +682,7 @@ async fn the_service_hashes_a_password_supplied_through_a_patch() {
         .expect("the lookup should succeed")
         .expect("the user should exist");
 
-    assert!(utils::compare_hash_and_password(&found.password, "An0ther@Pass").is_ok());
+    assert!(crypto::compare_hash_and_password(&found.password, "An0ther@Pass").is_ok());
 }
 
 // ──── Auth store ──────────────────────────────────
@@ -722,7 +722,7 @@ async fn the_auth_store_round_trips_a_password_reset() {
     fx.insert(&new_user).await;
 
     let store = PostgresAuthStore::new(fx.db.clone());
-    let digest = utils::hash_token(&format!("raw-{}", fx.tag));
+    let digest = crypto::hash_token(&format!("raw-{}", fx.tag));
 
     store
         .create_password_reset(&new_user.email, &digest)
