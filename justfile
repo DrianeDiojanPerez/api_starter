@@ -55,12 +55,17 @@ clean:
 
 # ──── Containers ──────────────────────────────────
 
+# Create the shared network, which compose expects to already exist.
+network:
+    @docker network inspect api-starter-bridge >/dev/null 2>&1 \
+        || docker network create api-starter-bridge
+
 # Start the API, database and mail catcher.
-up:
+up: network
     docker compose --profile dev up --build -d
 
 # Start only the backing services, for running the API on the host.
-services:
+services: network
     docker compose --profile dev up -d database mail
     @echo "waiting for postgres"
     until docker exec api-starter-db pg_isready -U "$DB_USERNAME" -d "$DB_DATABASE" >/dev/null 2>&1; do sleep 1; done
@@ -82,7 +87,7 @@ docker-test:
     docker compose --profile test run --rm test
 
 # Build the production image.
-docker-build:
+docker-build: network
     docker compose --profile prod build prod
 
 # ──── Migrations (sqlx) ──────────────────────────────────
