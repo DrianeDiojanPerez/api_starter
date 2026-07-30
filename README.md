@@ -167,7 +167,12 @@ just test-all      # the above plus the tests that need a database
 just lint          # cargo clippy --all-targets -- -D warnings
 just fmt           # cargo fmt --all
 just check         # fmt-check + lint + test
-just up / down / logs / ps
+just up            # build the image and start the stack
+just start         # start it again without rebuilding
+just rebuild       # rebuild from scratch, ignoring cached layers
+just down          # stop it
+just down-hard     # stop it and drop the volumes, cargo caches included
+just logs / ps
 just api           # run the Bruno collection against a running server
 ```
 
