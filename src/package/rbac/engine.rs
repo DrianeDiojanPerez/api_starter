@@ -131,12 +131,9 @@ mod tests {
                 roles: roles.iter().map(|role| (*role).to_owned()).collect(),
                 permissions: permissions
                     .iter()
-                    .enumerate()
-                    .map(|(index, (resource, name))| Permission {
-                        id: index as i32,
-                        name: (*name).to_owned(),
+                    .map(|(resource, name)| Permission {
                         resource: (*resource).to_owned(),
-                        module_id: 1,
+                        name: (*name).to_owned(),
                     })
                     .collect(),
             }),
