@@ -34,9 +34,6 @@ async fn serve(config: AppConfig) -> anyhow::Result<()> {
     server::serve(provider).await
 }
 
-/// `server migrate [module]`. Applies the migrations this binary carries, in
-/// registry order, then exits. Lets a deployment migrate without shipping
-/// sqlx-cli or the SQL files.
 async fn migrate(config: AppConfig, module: Option<&str>) -> anyhow::Result<()> {
     let database = Database::connect(&config.db).await?;
 

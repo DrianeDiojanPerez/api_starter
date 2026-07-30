@@ -19,7 +19,6 @@ impl RbacEngine {
         }
     }
 
-    /// Members of the super role skip every permission lookup.
     async fn role_bypass(&self, user_id: Uuid) -> bool {
         match self.store.get_roles(user_id).await {
             Ok(roles) => roles.contains(&self.super_role),

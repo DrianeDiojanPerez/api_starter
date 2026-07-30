@@ -1,5 +1,3 @@
-//! End to end tests for the public auth routes, driving the real router.
-
 mod support;
 
 use axum::body::Body;

@@ -5,8 +5,6 @@ use validator::Validate;
 use crate::shared::errdef::Error;
 use crate::shared::validation;
 
-/// JSON body extractor that fails with the shared error envelope instead of
-/// axum's default plain text rejection.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Json<T>(pub T);
 
@@ -25,8 +23,6 @@ where
     }
 }
 
-/// Binds the JSON body and then runs the `validator` rules on it, which is the
-/// `c.Bind` + `c.Validate` pair from the Go handlers.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ValidatedJson<T>(pub T);
 

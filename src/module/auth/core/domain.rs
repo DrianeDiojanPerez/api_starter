@@ -2,7 +2,6 @@ use serde::Serialize;
 
 use crate::sdk::AuthenticationTokens;
 
-/// Token pair returned by login and refresh.
 #[derive(Debug, Clone, Serialize)]
 pub struct LoginResponse {
     pub token: String,

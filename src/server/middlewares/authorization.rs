@@ -8,8 +8,6 @@ use crate::shared::auth::AuthUser;
 use crate::shared::errdef::Error;
 use crate::shared::rbac::Engine;
 
-/// The permission a guarded route requires, paired with the engine that
-/// answers the check.
 #[derive(Clone)]
 pub struct RbacState {
     engine: Arc<dyn Engine>,

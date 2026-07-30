@@ -10,8 +10,6 @@ use uuid::Uuid;
 use crate::sdk::{AuthenticationTokens, User};
 use crate::shared::errdef::Error;
 
-/// The authentication contract every consumer depends on, including the
-/// authentication middleware.
 #[async_trait]
 pub trait Auth: Send + Sync {
     async fn generate_token(
@@ -29,8 +27,6 @@ pub trait Auth: Send + Sync {
     async fn reset_password(&self, token: &str, new_password: &str) -> Result<(), Error>;
 }
 
-/// Authenticated identity attached to the request by the auth middleware and
-/// read back by the handlers.
 #[derive(Debug, Clone)]
 pub struct AuthUser(pub User);
 

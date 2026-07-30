@@ -42,7 +42,6 @@ impl PostgresAuthStore {
         rows.into_iter().map(|row| row.try_get("name")).collect()
     }
 
-    /// Hydrates the roles onto a user row, keeping both lookups in one place.
     async fn enrich(&self, row: Option<PgRow>) -> Result<Option<User>, sqlx::Error> {
         let Some(row) = row else {
             return Ok(None);

@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
-/// Identity shared across modules. The password hash never leaves the auth
-/// layer, so it is skipped during serialization.
+/// The password hash never leaves the auth layer, so it is skipped during
+/// serialization.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct User {
     pub id: Uuid,

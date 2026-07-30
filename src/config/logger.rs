@@ -1,8 +1,6 @@
 use std::fmt;
 use std::str::FromStr;
 
-/// Verbosity, lowest to highest. Parsed from `LOGGER_LEVEL`, which takes a
-/// level name and nothing else.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum LogLevel {
     Trace,
@@ -24,7 +22,6 @@ impl LogLevel {
         }
     }
 
-    /// Every accepted value, for the error message when parsing fails.
     pub const VARIANTS: [&'static str; 5] = ["trace", "debug", "info", "warn", "error"];
 }
 
@@ -34,8 +31,6 @@ impl fmt::Display for LogLevel {
     }
 }
 
-/// Only the names parse. A stray number or typo is rejected at start up rather
-/// than silently logging at the wrong level.
 impl FromStr for LogLevel {
     type Err = ();
 

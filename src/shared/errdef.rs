@@ -60,7 +60,6 @@ impl fmt::Display for ValidationError {
     }
 }
 
-/// Every fallible handler, service and repository returns this type.
 #[derive(Debug)]
 pub enum Error {
     App(AppError),
@@ -100,8 +99,7 @@ impl Error {
         Self::new(code::FORBIDDEN, message)
     }
 
-    /// Wraps an unexpected failure. The cause is logged but never returned to
-    /// the caller.
+    /// The cause is logged but never returned to the caller.
     pub fn unknown(cause: impl fmt::Display) -> Self {
         Error::App(AppError {
             code: code::UNKNOWN,
@@ -156,8 +154,6 @@ impl From<sqlx::Error> for Error {
     }
 }
 
-/// Central error rendering, mirroring the single `ErrorHandler` the Go server
-/// installed on echo so every failure shares one shape.
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         tracing::info!(error = %self, "Error Handler Catch");

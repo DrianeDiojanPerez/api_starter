@@ -1,18 +1,3 @@
-//! Repository and transaction tests against a real PostgreSQL instance.
-//!
-//! These are skipped unless `TEST_DATABASE_URL` is set, so `cargo test` stays
-//! runnable without any infrastructure. Run them with:
-//!
-//! ```text
-//! just test-all
-//! ```
-//!
-//! The migrations are embedded in the crate, so an empty database is enough:
-//! the first test to run applies them.
-//!
-//! Every test namespaces the rows it creates, so they are safe to run in
-//! parallel and against a database that already holds the seed data.
-
 use std::sync::Arc;
 
 use sqlx::postgres::PgPoolOptions;
@@ -33,8 +18,6 @@ use api_starter::shared::pagination::ListRequest;
 use api_starter::shared::rbac::{Engine, PostgresRbacStore, RbacEngine, Store as RbacStore};
 use api_starter::shared::utils;
 
-/// Returns a migrated pool, or `None` when the suite should be skipped.
-///
 /// Each test gets its own pool: `#[tokio::test]` builds a runtime per test,
 /// and a sqlx pool cannot outlive the runtime that created it. Migrating is
 /// idempotent and sqlx takes an advisory lock first, so running it every time
@@ -56,7 +39,6 @@ async fn pool() -> Option<PgPool> {
     Some(pool)
 }
 
-/// Skips the test body when there is no database to talk to.
 macro_rules! database {
     () => {
         match pool().await {
@@ -73,7 +55,6 @@ struct Fixture {
     db: Arc<Database>,
     users: PgUserRepository,
     permissions: PgPermissionRepository,
-    /// Suffix that keeps this test's rows apart from every other test's.
     tag: String,
 }
 
@@ -114,7 +95,6 @@ impl Fixture {
         }
     }
 
-    /// Inserts a user through the repository, committing the transaction.
     async fn insert(&self, user: &CreateUser) -> Uuid {
         let mut tx = self.tx_manager().begin().await.expect("begin should work");
         let id = self

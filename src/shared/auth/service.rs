@@ -13,7 +13,6 @@ use crate::shared::errdef::Error;
 use crate::shared::jwt::{Claims, TokenGenerator};
 use crate::shared::utils;
 
-/// A reset link is only usable for this long after it was requested.
 const PASSWORD_RESET_TTL_MINUTES: i64 = 15;
 
 const INVALID_CREDENTIALS: &str = "invalid username or password";
@@ -77,7 +76,6 @@ impl AuthService {
         })
     }
 
-    /// Reads and parses the `user_id` claim out of a validated token.
     fn user_id_from(&self, token: &str) -> Result<Uuid, Error> {
         let claims = self
             .jwt

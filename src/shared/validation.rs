@@ -4,8 +4,6 @@ use validator::{ValidationError as FieldError, ValidationErrors, ValidationError
 
 use crate::shared::errdef::Error;
 
-/// `strong-pwd` in the Go validator: at least 8 characters with an uppercase,
-/// a lowercase, a digit and a symbol.
 pub fn strong_password(password: &str) -> Result<(), FieldError> {
     let has_min_len = password.chars().count() >= 8;
     let has_upper = password.chars().any(char::is_uppercase);
@@ -22,8 +20,6 @@ pub fn strong_password(password: &str) -> Result<(), FieldError> {
     Err(FieldError::new("strong-pwd"))
 }
 
-/// Same rules as [`strong_password`], but returning the specific reason so the
-/// user service can report it on a partial update.
 pub fn password_checker(password: &str) -> Result<(), String> {
     if password.chars().count() < 8 {
         return Err("password is too short. It should be at least 8 characters long".to_owned());
@@ -46,8 +42,6 @@ pub fn password_checker(password: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Turns `validator` output into the flat `field -> [message]` map the API
-/// contract exposes, including nested and indexed paths (`roles.0.name`).
 pub fn to_error(errors: ValidationErrors) -> Error {
     let mut error = Error::validation("failed payload validation");
     collect(&errors, "", &mut error);

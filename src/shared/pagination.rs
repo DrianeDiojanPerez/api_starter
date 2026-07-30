@@ -9,8 +9,6 @@ use crate::shared::errdef::Error;
 pub const DEFAULT_PER_PAGE: i64 = 10;
 pub const MAX_PER_PAGE: i64 = 100;
 
-/// Query string binding for every `Index` endpoint. Unknown query parameters
-/// become filters, which is what the Go `CustomBinder` did.
 #[derive(Debug, Clone)]
 pub struct ListRequest {
     pub page: i64,
@@ -128,7 +126,6 @@ impl<T> Data<T> {
         }
     }
 
-    /// Maps the payload while keeping the pagination metadata untouched.
     pub fn map<U>(self, f: impl FnMut(T) -> U) -> Data<U> {
         Data {
             data: self.data.into_iter().map(f).collect(),

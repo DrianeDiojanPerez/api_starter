@@ -17,8 +17,6 @@ use crate::shared::auth::Auth;
 use crate::shared::errdef::Error;
 use crate::shared::rbac::Engine;
 
-/// What the routes actually need. Keeping this separate from the provider lets
-/// the router be built from test doubles, without a database behind it.
 pub struct Modules {
     pub auth: Arc<dyn Auth>,
     pub rbac: Arc<dyn Engine>,
@@ -35,8 +33,6 @@ impl From<&Provider> for Modules {
     }
 }
 
-/// Builds the application router with the global middleware stack applied in
-/// the same order the Go server used.
 pub fn router(modules: &Modules) -> Router {
     mount::mount(modules)
         .fallback(route_not_found)
@@ -52,7 +48,6 @@ pub fn router(modules: &Modules) -> Router {
         .layer(CorsLayer::permissive())
 }
 
-/// Unmatched routes get the same error envelope as everything else.
 async fn route_not_found() -> Error {
     Error::not_found("route not found")
 }
@@ -75,7 +70,6 @@ pub async fn serve(provider: Provider) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Stops accepting connections on Ctrl+C or on the SIGTERM Docker sends.
 async fn shutdown_signal() {
     let ctrl_c = async {
         tokio::signal::ctrl_c()

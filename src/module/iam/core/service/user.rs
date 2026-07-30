@@ -20,7 +20,6 @@ impl UserServiceImpl {
         Self { trm, repository }
     }
 
-    /// Shared translation of repository failures into API errors.
     fn map_domain_error(err: DomainError) -> Error {
         match err {
             DomainError::UserNotFound => Error::not_found("user does not exists"),

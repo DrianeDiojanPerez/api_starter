@@ -16,8 +16,6 @@ use crate::package::env;
 
 pub type ConfigError = env::Error;
 
-/// Aggregated application configuration, loaded once at start up and shared
-/// with every handler through the provider.
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     pub server: Server,

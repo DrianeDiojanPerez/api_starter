@@ -4,8 +4,6 @@ use axum::response::Response;
 use std::net::SocketAddr;
 use tracing::Instrument;
 
-/// Attaches the per request fields every log line inside the handler inherits:
-/// route, request id, caller address and method.
 pub async fn request_context(request: Request, next: Next) -> Response {
     let route_path = request
         .extensions()

@@ -5,8 +5,6 @@ use crate::module::iam::adapter::repository::{PgPermissionRepository, PgUserRepo
 use crate::module::iam::core::ports::{PermissionService, UserService};
 use crate::module::iam::core::service::{PermissionServiceImpl, UserServiceImpl};
 
-/// Wires the repositories and services of the module together, mirroring the
-/// `NewService` constructor of the Go implementation.
 #[derive(Clone)]
 pub struct Services {
     pub user: Arc<dyn UserService>,
