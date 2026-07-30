@@ -50,13 +50,13 @@ impl AppConfig {
 
     fn load_server() -> Result<Server, ConfigError> {
         Ok(Server {
-            port: env::parsed_or("APP_PORT", 3000)?,
+            port: env::u16_or("APP_PORT", 3000)?,
         })
     }
 
     fn load_logger() -> Result<Logger, ConfigError> {
         Ok(Logger {
-            level: env::parsed_or_default("LOGGER_LEVEL")?,
+            level: env::variant_or_default("LOGGER_LEVEL")?,
             directory: env::string_or("LOGGER_DIRECTORY", "storage/logs"),
         })
     }
@@ -64,7 +64,7 @@ impl AppConfig {
     fn load_deployment() -> Result<Deployment, ConfigError> {
         Ok(Deployment {
             name: env::string_or("APP_NAME", "App_sample"),
-            environment: env::parsed_or_default("APP_ENVIRONMENT")?,
+            environment: env::variant_or_default("APP_ENVIRONMENT")?,
             time_zone: env::string_or("APP_TIMEZONE", "America/Belize"),
         })
     }
@@ -72,11 +72,11 @@ impl AppConfig {
     fn load_db() -> Result<Db, ConfigError> {
         Ok(Db {
             host: env::string_or("DB_HOST", "127.0.0.1"),
-            port: env::parsed_or("DB_PORT", 5432)?,
+            port: env::u16_or("DB_PORT", 5432)?,
             database: env::string_or("DB_DATABASE", "api_starter"),
             username: env::string_or("DB_USERNAME", "root"),
             password: env::string_or("DB_PASSWORD", "password"),
-            max_connections: env::parsed_or("DB_MAX_CONNECTIONS", 10)?,
+            max_connections: env::u32_or("DB_MAX_CONNECTIONS", 10)?,
             run_migrations: env::boolean_or("DB_RUN_MIGRATIONS", true)?,
         })
     }
@@ -84,7 +84,7 @@ impl AppConfig {
     fn load_mail() -> Result<Mail, ConfigError> {
         Ok(Mail {
             host: env::string_or("MAIL_HOST", "mail"),
-            port: env::parsed_or("MAIL_PORT", 1025)?,
+            port: env::u16_or("MAIL_PORT", 1025)?,
             username: env::string("MAIL_USERNAME").unwrap_or_default(),
             password: env::string("MAIL_PASSWORD").unwrap_or_default(),
             from_address: env::string_or("MAIL_FROM_ADDRESS", "noreply@example.com"),
@@ -98,11 +98,11 @@ impl AppConfig {
 
     fn load_auth() -> Result<Auth, ConfigError> {
         Ok(Auth {
-            access_token_ttl_in_seconds: env::parsed_or(
+            access_token_ttl_in_seconds: env::i64_or(
                 "AUTHENTICATION_ACCESS_TOKEN_TTL_SECONDS",
                 3600,
             )?,
-            refresh_token_ttl_in_seconds: env::parsed_or(
+            refresh_token_ttl_in_seconds: env::i64_or(
                 "AUTHENTICATION_REFRESH_TOKEN_TTL_SECONDS",
                 604_800,
             )?,

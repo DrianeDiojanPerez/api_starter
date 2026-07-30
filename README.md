@@ -66,10 +66,21 @@ trimming and fallbacks are written once:
 ```rust
 env::string_or("APP_NAME", "App_sample")     // unset or blank falls back
 env::required("JWT_SECRET")?                 // refuses to start without it
-env::parsed_or("APP_PORT", 3000)?            // any FromStr type
+env::u16_or("APP_PORT", 3000)?               // rejects 70000, it is a port
+env::u32_or("DB_MAX_CONNECTIONS", 10)?       // rejects -1, a pool is unsigned
+env::i64_or("ACCESS_TOKEN_TTL", 3600)?       // seconds
 env::boolean_or("DB_RUN_MIGRATIONS", true)?  // 1/yes/on as well as true
 env::vec_or("CORS_ORIGINS", &["*"])          // comma separated, trimmed
+env::variant_or_default("LOGGER_LEVEL")?     // one of a fixed set of names
 ```
+
+Every reader is named for the type it hands back, so the width is checked at
+the edge rather than cast into shape later. The parse itself is private: there
+is no generic `parsed::<T>` to reach for, and that is what keeps the call sites
+reading as concrete types.
+
+`variant_or_default` is the one generic reader, because a package that must not
+know about `config` cannot name the enums that live there.
 
 A value that is present but unparseable is an error, not a silent fallback: a
 typo in a deployment should stop the process at start up rather than quietly

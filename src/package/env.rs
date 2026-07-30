@@ -38,8 +38,47 @@ pub fn required(key: &'static str) -> Result<String, Error> {
     string(key).ok_or(Error::Missing { key })
 }
 
-/// Reads and parses a variable into any type that knows how to parse itself.
-pub fn parsed<T: FromStr>(key: &'static str) -> Result<Option<T>, Error> {
+/// Reads an unsigned 16 bit number, the size of a port.
+pub fn u16(key: &'static str) -> Result<Option<u16>, Error> {
+    parsed(key)
+}
+
+/// Reads an unsigned 16 bit number, falling back when it is unset or blank.
+pub fn u16_or(key: &'static str, fallback: u16) -> Result<u16, Error> {
+    Ok(parsed(key)?.unwrap_or(fallback))
+}
+
+/// Reads an unsigned 32 bit number, the size of a pool or a limit.
+pub fn u32(key: &'static str) -> Result<Option<u32>, Error> {
+    parsed(key)
+}
+
+/// Reads an unsigned 32 bit number, falling back when it is unset or blank.
+pub fn u32_or(key: &'static str, fallback: u32) -> Result<u32, Error> {
+    Ok(parsed(key)?.unwrap_or(fallback))
+}
+
+/// Reads a signed 64 bit number, the size of a duration in seconds.
+pub fn i64(key: &'static str) -> Result<Option<i64>, Error> {
+    parsed(key)
+}
+
+/// Reads a signed 64 bit number, falling back when it is unset or blank.
+pub fn i64_or(key: &'static str, fallback: i64) -> Result<i64, Error> {
+    Ok(parsed(key)?.unwrap_or(fallback))
+}
+
+/// Reads one of a fixed set of named values, falling back to the type's own
+/// default. This is the one generic read, because a package that must not know
+/// about `config` cannot name the enums that live there.
+pub fn variant_or_default<T: FromStr + Default>(key: &'static str) -> Result<T, Error> {
+    Ok(parsed(key)?.unwrap_or_default())
+}
+
+/// The single parse, shared by every typed reader above. Deliberately private:
+/// callers ask for the type they want by name rather than turning this into a
+/// generic escape hatch.
+fn parsed<T: FromStr>(key: &'static str) -> Result<Option<T>, Error> {
     match string(key) {
         None => Ok(None),
         Some(value) => value
@@ -47,16 +86,6 @@ pub fn parsed<T: FromStr>(key: &'static str) -> Result<Option<T>, Error> {
             .map(Some)
             .map_err(|_| Error::Invalid { key, value }),
     }
-}
-
-/// Reads and parses a variable, falling back when it is unset or blank.
-pub fn parsed_or<T: FromStr>(key: &'static str, fallback: T) -> Result<T, Error> {
-    Ok(parsed(key)?.unwrap_or(fallback))
-}
-
-/// Reads and parses a variable, falling back to the type's own default.
-pub fn parsed_or_default<T: FromStr + Default>(key: &'static str) -> Result<T, Error> {
-    Ok(parsed(key)?.unwrap_or_default())
 }
 
 /// Reads a boolean, accepting the spellings people actually write in a `.env`
@@ -145,12 +174,30 @@ mod tests {
     }
 
     #[test]
-    fn parses_into_the_requested_type() {
+    fn reads_each_number_at_the_width_it_was_asked_for() {
         set("ENV_TEST_PORT", "8080");
+        set("ENV_TEST_POOL", "25");
+        set("ENV_TEST_TTL", "-604800");
 
-        assert_eq!(parsed::<u16>("ENV_TEST_PORT").unwrap(), Some(8080));
-        assert_eq!(parsed_or("ENV_TEST_PORT", 3000_u16).unwrap(), 8080);
-        assert_eq!(parsed_or("ENV_TEST_NO_PORT", 3000_u16).unwrap(), 3000);
+        assert_eq!(u16("ENV_TEST_PORT").unwrap(), Some(8080));
+        assert_eq!(u16_or("ENV_TEST_PORT", 3000).unwrap(), 8080);
+        assert_eq!(u16_or("ENV_TEST_NO_PORT", 3000).unwrap(), 3000);
+
+        assert_eq!(u32("ENV_TEST_POOL").unwrap(), Some(25));
+        assert_eq!(u32_or("ENV_TEST_NO_POOL", 10).unwrap(), 10);
+
+        assert_eq!(i64("ENV_TEST_TTL").unwrap(), Some(-604_800));
+        assert_eq!(i64_or("ENV_TEST_NO_TTL", 3600).unwrap(), 3600);
+    }
+
+    #[test]
+    fn a_number_that_does_not_fit_the_width_is_rejected() {
+        set("ENV_TEST_WIDE_PORT", "70000");
+        set("ENV_TEST_NEGATIVE_POOL", "-1");
+
+        assert!(u16("ENV_TEST_WIDE_PORT").is_err(), "70000 overflows a u16");
+        assert!(u32("ENV_TEST_NEGATIVE_POOL").is_err(), "a pool is unsigned");
+        assert_eq!(i64("ENV_TEST_NEGATIVE_POOL").unwrap(), Some(-1));
     }
 
     #[test]
@@ -158,13 +205,49 @@ mod tests {
         set("ENV_TEST_BAD_PORT", "eighty");
 
         assert_eq!(
-            parsed::<u16>("ENV_TEST_BAD_PORT"),
+            u16("ENV_TEST_BAD_PORT"),
             Err(Error::Invalid {
                 key: "ENV_TEST_BAD_PORT",
                 value: "eighty".to_owned()
             })
         );
-        assert!(parsed_or("ENV_TEST_BAD_PORT", 3000_u16).is_err());
+        assert!(u16_or("ENV_TEST_BAD_PORT", 3000).is_err());
+    }
+
+    #[test]
+    fn a_named_variant_falls_back_to_its_own_default() {
+        #[derive(Debug, Default, PartialEq)]
+        enum Level {
+            #[default]
+            Info,
+            Error,
+        }
+
+        impl FromStr for Level {
+            type Err = ();
+
+            fn from_str(value: &str) -> Result<Self, Self::Err> {
+                match value.to_ascii_lowercase().as_str() {
+                    "info" => Ok(Self::Info),
+                    "error" => Ok(Self::Error),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        set("ENV_TEST_LEVEL", "ERROR");
+
+        assert_eq!(
+            variant_or_default::<Level>("ENV_TEST_LEVEL").unwrap(),
+            Level::Error
+        );
+        assert_eq!(
+            variant_or_default::<Level>("ENV_TEST_NO_LEVEL").unwrap(),
+            Level::Info
+        );
+
+        set("ENV_TEST_BAD_LEVEL", "chatty");
+        assert!(variant_or_default::<Level>("ENV_TEST_BAD_LEVEL").is_err());
     }
 
     #[test]
