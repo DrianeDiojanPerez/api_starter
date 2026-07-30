@@ -81,7 +81,7 @@ pub fn boolean_or(key: &'static str, fallback: bool) -> Result<bool, Error> {
 /// Reads a comma separated list, trimming each entry and dropping the empty
 /// ones. A value that holds nothing but separators counts as unset, so
 /// `FOO=" , "` falls back rather than producing an empty list.
-pub fn list(key: &'static str) -> Option<Vec<String>> {
+pub fn vec(key: &'static str) -> Option<Vec<String>> {
     let value = string(key)?;
 
     let entries: Vec<String> = value
@@ -99,8 +99,8 @@ pub fn list(key: &'static str) -> Option<Vec<String>> {
 }
 
 /// Reads a comma separated list, falling back when it is unset or blank.
-pub fn list_or(key: &'static str, fallback: &[&str]) -> Vec<String> {
-    list(key).unwrap_or_else(|| fallback.iter().map(|entry| (*entry).to_owned()).collect())
+pub fn vec_or(key: &'static str, fallback: &[&str]) -> Vec<String> {
+    vec(key).unwrap_or_else(|| fallback.iter().map(|entry| (*entry).to_owned()).collect())
 }
 
 #[cfg(test)]
@@ -194,7 +194,7 @@ mod tests {
         set("ENV_TEST_ORIGINS", " http://a.test , ,http://b.test ");
 
         assert_eq!(
-            list("ENV_TEST_ORIGINS"),
+            vec("ENV_TEST_ORIGINS"),
             Some(vec!["http://a.test".to_owned(), "http://b.test".to_owned()])
         );
     }
@@ -204,16 +204,16 @@ mod tests {
         set("ENV_TEST_ONE_ORIGIN", "http://only.test");
 
         assert_eq!(
-            list("ENV_TEST_ONE_ORIGIN"),
+            vec("ENV_TEST_ONE_ORIGIN"),
             Some(vec!["http://only.test".to_owned()])
         );
     }
 
     #[test]
     fn a_list_of_nothing_but_separators_falls_back() {
-        set("ENV_TEST_EMPTY_LIST", "  ,  ");
+        set("ENV_TEST_EMPTY_VEC", "  ,  ");
 
-        assert_eq!(list("ENV_TEST_EMPTY_LIST"), None);
-        assert_eq!(list_or("ENV_TEST_EMPTY_LIST", &["*"]), vec!["*".to_owned()]);
+        assert_eq!(vec("ENV_TEST_EMPTY_VEC"), None);
+        assert_eq!(vec_or("ENV_TEST_EMPTY_VEC", &["*"]), vec!["*".to_owned()]);
     }
 }

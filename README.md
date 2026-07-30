@@ -68,7 +68,7 @@ env::string_or("APP_NAME", "App_sample")     // unset or blank falls back
 env::required("JWT_SECRET")?                 // refuses to start without it
 env::parsed_or("APP_PORT", 3000)?            // any FromStr type
 env::boolean_or("DB_RUN_MIGRATIONS", true)?  // 1/yes/on as well as true
-env::list_or("CORS_ORIGINS", &["*"])         // comma separated, trimmed
+env::vec_or("CORS_ORIGINS", &["*"])          // comma separated, trimmed
 ```
 
 A value that is present but unparseable is an error, not a silent fallback: a
