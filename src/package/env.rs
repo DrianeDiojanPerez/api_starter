@@ -61,7 +61,7 @@ pub fn parsed_or_default<T: FromStr + Default>(key: &'static str) -> Result<T, E
 
 /// Reads a boolean, accepting the spellings people actually write in a `.env`
 /// file rather than only the two `bool::from_str` knows about.
-pub fn flag(key: &'static str) -> Result<Option<bool>, Error> {
+pub fn boolean(key: &'static str) -> Result<Option<bool>, Error> {
     let Some(value) = string(key) else {
         return Ok(None);
     };
@@ -74,8 +74,8 @@ pub fn flag(key: &'static str) -> Result<Option<bool>, Error> {
 }
 
 /// Reads a boolean, falling back when it is unset or blank.
-pub fn flag_or(key: &'static str, fallback: bool) -> Result<bool, Error> {
-    Ok(flag(key)?.unwrap_or(fallback))
+pub fn boolean_or(key: &'static str, fallback: bool) -> Result<bool, Error> {
+    Ok(boolean(key)?.unwrap_or(fallback))
 }
 
 /// Reads a comma separated list, trimming each entry and dropping the empty
@@ -170,23 +170,23 @@ mod tests {
     #[test]
     fn reads_the_boolean_spellings_people_actually_write() {
         for truthy in ["1", "t", "true", "TRUE", "y", "yes", "on"] {
-            set("ENV_TEST_FLAG", truthy);
-            assert_eq!(flag("ENV_TEST_FLAG").unwrap(), Some(true), "{truthy}");
+            set("ENV_TEST_BOOLEAN", truthy);
+            assert_eq!(boolean("ENV_TEST_BOOLEAN").unwrap(), Some(true), "{truthy}");
         }
 
         for falsy in ["0", "f", "false", "FALSE", "n", "no", "off"] {
-            set("ENV_TEST_FLAG", falsy);
-            assert_eq!(flag("ENV_TEST_FLAG").unwrap(), Some(false), "{falsy}");
+            set("ENV_TEST_BOOLEAN", falsy);
+            assert_eq!(boolean("ENV_TEST_BOOLEAN").unwrap(), Some(false), "{falsy}");
         }
     }
 
     #[test]
     fn an_unparseable_boolean_is_an_error() {
-        set("ENV_TEST_BAD_FLAG", "maybe");
+        set("ENV_TEST_BAD_BOOLEAN", "maybe");
 
-        assert!(flag("ENV_TEST_BAD_FLAG").is_err());
-        assert!(flag_or("ENV_TEST_BAD_FLAG", true).is_err());
-        assert!(flag_or("ENV_TEST_NO_FLAG", true).unwrap());
+        assert!(boolean("ENV_TEST_BAD_BOOLEAN").is_err());
+        assert!(boolean_or("ENV_TEST_BAD_BOOLEAN", true).is_err());
+        assert!(boolean_or("ENV_TEST_NO_BOOLEAN", true).unwrap());
     }
 
     #[test]

@@ -77,7 +77,7 @@ impl AppConfig {
             username: env::string_or("DB_USERNAME", "root"),
             password: env::string_or("DB_PASSWORD", "password"),
             max_connections: env::parsed_or("DB_MAX_CONNECTIONS", 10)?,
-            run_migrations: env::flag_or("DB_RUN_MIGRATIONS", true)?,
+            run_migrations: env::boolean_or("DB_RUN_MIGRATIONS", true)?,
         })
     }
 
