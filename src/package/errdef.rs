@@ -6,8 +6,6 @@ use axum::response::{IntoResponse, Response};
 
 use crate::package::response;
 
-/// Domain error codes, kept identical to the Go service so API consumers do
-/// not have to change.
 pub mod code {
     pub const VALIDATION_FAILED: i32 = 1000;
     pub const NOT_FOUND: i32 = 1001;

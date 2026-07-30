@@ -170,7 +170,7 @@ mod tests {
 
         assert_eq!(logger("debug").level.to_string(), "debug");
         assert_eq!(logger("ERROR").level.to_string(), "error");
-        // The numeric slog levels the Go service used are gone.
+        // A number is not a level.
         assert!("0".parse::<LogLevel>().is_err());
     }
 

@@ -16,7 +16,7 @@ pub enum JwtError {
 }
 
 pub trait TokenGenerator: Send + Sync {
-    /// `expires_at` is an absolute unix timestamp, matching the Go signature.
+    /// `expires_at` is an absolute unix timestamp, not a duration.
     fn generate_token(&self, claims: Claims, expires_at: i64) -> Result<String, JwtError>;
     fn validate_token(&self, token: &str) -> Result<Claims, JwtError>;
 }
@@ -47,7 +47,7 @@ impl TokenGenerator for HmacTokenGenerator {
     fn validate_token(&self, token: &str) -> Result<Claims, JwtError> {
         let mut validation = Validation::new(Algorithm::HS256);
         validation.set_required_spec_claims(&["exp"]);
-        // No grace period on expiry, matching the Go implementation.
+        // No grace period on expiry.
         validation.leeway = 0;
 
         let data = jsonwebtoken::decode::<Claims>(token, &self.decoding, &validation)

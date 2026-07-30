@@ -3,8 +3,6 @@ use sha2::{Digest, Sha256};
 
 use crate::package::errdef::Error;
 
-/// Cost matches the Go service so hashes stay interchangeable between both
-/// implementations during a migration.
 const BCRYPT_COST: u32 = bcrypt::DEFAULT_COST;
 
 pub fn hash_password(password: &str) -> Result<String, Error> {

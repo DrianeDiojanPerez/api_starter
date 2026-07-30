@@ -171,7 +171,7 @@ just up / down / logs / ps
 just api           # run the Bruno collection against a running server
 ```
 
-A `Makefile` with the same targets is kept for parity with the Go repository.
+A `Makefile` mirroring the same targets is included as well.
 
 ## Tests
 
@@ -291,7 +291,7 @@ environment variable.
 
 ## Docker targets
 
-The `Dockerfile` is multi stage, matching the Go setup:
+The `Dockerfile` is multi stage:
 
 - `development` hot reloads through `cargo watch`
 - `test` runs `cargo test --all-targets`
@@ -315,12 +315,9 @@ syntax.
 `development`; only `production` turns the stdout logger off. Both variables
 reject anything else at start up rather than falling back to a default.
 
-## Notes on the port
+## Design notes
 
-- Password reset tokens are stored as a SHA-256 digest instead of in clear
-  text, so the table cannot be replayed if it leaks. The token mailed to the
-  user is unchanged.
+- Password reset tokens are stored as a SHA-256 digest, never in clear text,
+  so the table cannot be replayed if it leaks. Only the mailed token is usable.
 - `PATCH /v1/users/...` takes a typed optional payload rather than an untyped
   map, so an unknown field is rejected instead of silently ignored.
-- Password hashes remain bcrypt, which keeps hashes interchangeable with the
-  Go service during a migration.
