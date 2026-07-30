@@ -209,7 +209,8 @@ mod tests {
 
     use async_trait::async_trait;
 
-    use crate::sdk::{MaskedBytes, PasswordReset};
+    use crate::package::masked::MaskedBytes;
+    use crate::sdk::PasswordReset;
     use crate::shared::emailer::EmailerError;
     use crate::shared::errdef::code;
     use crate::shared::jwt::HmacTokenGenerator;

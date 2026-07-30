@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde_json::Value;
 
-use crate::sdk::MaskedBytes;
+use crate::package::masked::MaskedBytes;
 
 pub type Claims = BTreeMap<String, Value>;
 

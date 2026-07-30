@@ -1,4 +1,4 @@
-use crate::sdk::MaskedString;
+use crate::package::masked::MaskedString;
 
 #[derive(Clone)]
 pub struct Db {

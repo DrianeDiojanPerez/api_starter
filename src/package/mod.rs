@@ -5,4 +5,6 @@
 //! or `config`. That one way dependency is the whole point of the folder, and
 //! it is what keeps the business code out of the plumbing.
 
+pub mod crypto;
 pub mod env;
+pub mod masked;

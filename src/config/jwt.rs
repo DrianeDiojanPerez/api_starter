@@ -1,4 +1,4 @@
-use crate::sdk::MaskedBytes;
+use crate::package::masked::MaskedBytes;
 
 #[derive(Debug, Clone)]
 pub struct Jwt {
