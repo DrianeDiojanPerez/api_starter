@@ -103,6 +103,9 @@ Public:
 
 | Method | Path                  | Description                     |
 | ------ | --------------------- | ------------------------------- |
+| GET    | `/v1/healthcheck`     | Liveness probe                  |
+| GET    | `/docs`               | API reference, rendered         |
+| GET    | `/openapi.yaml`       | The spec behind it              |
 | POST   | `/v1/login`           | Issue an access + refresh token |
 | POST   | `/v1/refresh-token`   | Exchange a refresh token        |
 | POST   | `/v1/forgot-password` | Mail a password reset link      |
@@ -128,6 +131,31 @@ Every response uses one envelope:
 ```json
 { "data": { }, "pagination": { }, "error": null }
 ```
+
+## API reference
+
+`GET /docs` renders the spec at `src/server/openapi.yaml`, which is embedded
+into the binary, so the production image serves its own documentation with no
+extra files to deploy. `GET /openapi.yaml` returns the raw spec for a client
+generator.
+
+The spec is not generated from the code, so it can drift. A test in
+`src/server/docs.rs` fails if a route is served without being documented,
+which catches the most common half of that.
+
+## Logging
+
+Every request logs twice, as JSON, inside a span carrying the route, request
+id and caller address:
+
+```json
+{"level":"INFO","fields":{"message":"request started","method":"POST","uri":"/v1/login"}}
+{"level":"INFO","fields":{"message":"request completed","method":"POST","uri":"/v1/login","status":200,"latency_ms":301.02}}
+```
+
+`latency_ms` is fractional, since most requests finish well inside a
+millisecond and would otherwise all read as `0`. A 5xx logs at `ERROR` with
+the same fields.
 
 ## Quick start (Docker)
 
