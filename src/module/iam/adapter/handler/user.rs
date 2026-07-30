@@ -8,12 +8,12 @@ use validator::Validate;
 
 use crate::module::iam::core::domain::{self as domain};
 use crate::module::iam::core::ports::{UpdateUser, UserService};
-use crate::shared::auth::AuthUser;
-use crate::shared::errdef::Error;
-use crate::shared::extract::{Json, ValidatedJson};
-use crate::shared::pagination::ListRequest;
-use crate::shared::response::{self, Response};
-use crate::shared::validation::strong_password;
+use crate::package::auth::AuthUser;
+use crate::package::errdef::Error;
+use crate::package::extract::{Json, ValidatedJson};
+use crate::package::pagination::ListRequest;
+use crate::package::response::{self, Response};
+use crate::package::validation::strong_password;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Company {

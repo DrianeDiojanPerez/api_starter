@@ -10,13 +10,11 @@ use axum::routing::{delete, get, patch, post};
 use axum::{middleware, Router};
 
 use crate::module::iam::adapter::handler::{permission, user};
+use crate::package::auth::Auth;
+use crate::package::rbac::Engine;
 use crate::server::middlewares::authentication::authenticate;
 use crate::server::middlewares::authorization::{rbac_guard, RbacState};
-use crate::shared::auth::Auth;
-use crate::shared::rbac::Engine;
 
-/// Every route in this module requires an authenticated identity, so the auth
-/// middleware is applied once at the module boundary.
 pub fn routes(services: &Services, auth: Arc<dyn Auth>, rbac: Arc<dyn Engine>) -> Router {
     Router::new()
         .merge(user_routes(services, rbac))

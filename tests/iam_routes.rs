@@ -1,6 +1,3 @@
-//! End to end tests for the protected IAM routes: the auth middleware, the
-//! RBAC guard, the extractors and the response shapes.
-
 mod support;
 
 use axum::body::Body;

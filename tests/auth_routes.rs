@@ -1,5 +1,3 @@
-//! End to end tests for the public auth routes, driving the real router.
-
 mod support;
 
 use axum::body::Body;
@@ -268,4 +266,57 @@ async fn every_response_carries_a_request_id() {
     .expect("the router should respond");
 
     assert!(response.headers().contains_key("x-request-id"));
+}
+
+#[tokio::test]
+async fn the_healthcheck_answers_without_a_token() {
+    let app = TestApp::new();
+
+    let (status, body) = app.get("/v1/healthcheck").await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["data"]["status"], "OK");
+    assert_eq!(body["data"]["version"], env!("CARGO_PKG_VERSION"));
+    assert!(body["error"].is_null());
+}
+
+#[tokio::test]
+async fn the_spec_is_served_as_yaml() {
+    let app = TestApp::new();
+
+    let response = tower::ServiceExt::oneshot(
+        app.router.clone(),
+        Request::builder()
+            .uri("/openapi.yaml")
+            .body(Body::empty())
+            .expect("the request should build"),
+    )
+    .await
+    .expect("the router should respond");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .headers()
+            .get("content-type")
+            .and_then(|value| value.to_str().ok()),
+        Some("application/yaml")
+    );
+}
+
+#[tokio::test]
+async fn the_reference_page_is_served_without_a_token() {
+    let app = TestApp::new();
+
+    let response = tower::ServiceExt::oneshot(
+        app.router.clone(),
+        Request::builder()
+            .uri("/docs")
+            .body(Body::empty())
+            .expect("the request should build"),
+    )
+    .await
+    .expect("the router should respond");
+
+    assert_eq!(response.status(), StatusCode::OK);
 }

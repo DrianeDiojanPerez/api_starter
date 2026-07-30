@@ -1,12 +1,12 @@
 use axum::Router;
 
-use crate::module::{auth, iam};
-use crate::server::Modules;
+use crate::module::{auth, health, iam};
+use crate::server::{docs, Modules};
 
-/// Mounts every module on the root router. New modules are added here, the
-/// same way the Go server had a single `Mout` function.
 pub fn mount(modules: &Modules) -> Router {
     Router::new()
+        .merge(health::routes())
+        .merge(docs::routes())
         .merge(auth::routes(modules.auth.clone()))
         .merge(iam::routes(
             &modules.iam,

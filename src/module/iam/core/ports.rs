@@ -4,11 +4,9 @@ use sqlx::PgConnection;
 use uuid::Uuid;
 
 use crate::module::iam::core::domain::{CreateUser, DomainError, Permission, User};
-use crate::shared::errdef::Error;
-use crate::shared::pagination::{Data, ListRequest};
+use crate::package::errdef::Error;
+use crate::package::pagination::{Data, ListRequest};
 
-/// Fields accepted by `PATCH /v1/users/:user-id`. Everything is optional, so a
-/// caller only sends what actually changes.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UpdateUser {
@@ -24,7 +22,6 @@ pub struct UpdateUser {
 }
 
 impl UpdateUser {
-    /// True when the payload would not change a column on `iam.users`.
     pub fn has_no_column_changes(&self) -> bool {
         self.avatar_id.is_none()
             && self.first_name.is_none()
@@ -35,8 +32,6 @@ impl UpdateUser {
             && self.password.is_none()
     }
 
-    /// Narrows a payload to the fields a user may change on their own record,
-    /// which is what `PATCH /v1/users/my-user` allows.
     pub fn restricted_to_self(self) -> Self {
         Self {
             avatar_id: self.avatar_id,

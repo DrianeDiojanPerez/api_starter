@@ -5,13 +5,11 @@ use axum::http::request::Parts;
 use axum::middleware::Next;
 use axum::response::Response;
 
-use crate::shared::auth::{Auth, AuthUser};
-use crate::shared::errdef::Error;
+use crate::package::auth::{Auth, AuthUser};
+use crate::package::errdef::Error;
 
 const BEARER: &str = "Bearer ";
 
-/// Validates the bearer token and puts the resolved identity on the request so
-/// downstream handlers and the authorization guard can read it.
 pub async fn authenticate(
     State(auth): State<Arc<dyn Auth>>,
     mut request: Request,
@@ -36,7 +34,6 @@ pub async fn authenticate(
     Ok(next.run(request).await)
 }
 
-/// Handler extractor for the identity installed by [`authenticate`].
 impl<S: Send + Sync> FromRequestParts<S> for AuthUser {
     type Rejection = Error;
 

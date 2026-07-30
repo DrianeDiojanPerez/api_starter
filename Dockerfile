@@ -27,7 +27,11 @@ RUN cargo install cargo-watch --locked
 
 COPY . .
 
-RUN chown -R $USERNAME:$USERNAME /app
+# The cargo home is populated by root in the base stage. The named volumes
+# mounted over these paths inherit whatever the image owns, so both have to be
+# handed over before the container drops to $USERNAME, or cargo cannot write
+# to its own registry cache.
+RUN chown -R $USERNAME:$USERNAME /app /usr/local/cargo
 
 ENV TZ="America/Belize"
 

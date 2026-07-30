@@ -1,17 +1,16 @@
+mod domain;
 mod service;
 mod store;
 
+pub use domain::{AuthenticationTokens, Identity, PasswordReset};
 pub use service::AuthService;
 pub use store::{PostgresAuthStore, Store};
 
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::sdk::{AuthenticationTokens, User};
-use crate::shared::errdef::Error;
+use crate::package::errdef::Error;
 
-/// The authentication contract every consumer depends on, including the
-/// authentication middleware.
 #[async_trait]
 pub trait Auth: Send + Sync {
     async fn generate_token(
@@ -22,17 +21,15 @@ pub trait Auth: Send + Sync {
 
     async fn refresh_token(&self, refresh_token: &str) -> Result<AuthenticationTokens, Error>;
 
-    async fn get_identity(&self, access_token: &str) -> Result<User, Error>;
+    async fn get_identity(&self, access_token: &str) -> Result<Identity, Error>;
 
     async fn password_recovery(&self, email: &str, callback_uri: &str) -> Result<(), Error>;
 
     async fn reset_password(&self, token: &str, new_password: &str) -> Result<(), Error>;
 }
 
-/// Authenticated identity attached to the request by the auth middleware and
-/// read back by the handlers.
 #[derive(Debug, Clone)]
-pub struct AuthUser(pub User);
+pub struct AuthUser(pub Identity);
 
 impl AuthUser {
     pub fn id(&self) -> Uuid {

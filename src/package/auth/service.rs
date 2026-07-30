@@ -6,14 +6,13 @@ use chrono::{Duration, Utc};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::sdk::{AuthenticationTokens, User};
-use crate::shared::auth::{Auth, Store};
-use crate::shared::emailer::Emailer;
-use crate::shared::errdef::Error;
-use crate::shared::jwt::{Claims, TokenGenerator};
-use crate::shared::utils;
+use crate::package::auth::{Auth, Store};
+use crate::package::auth::{AuthenticationTokens, Identity};
+use crate::package::crypto;
+use crate::package::emailer::Emailer;
+use crate::package::errdef::Error;
+use crate::package::jwt::{Claims, TokenGenerator};
 
-/// A reset link is only usable for this long after it was requested.
 const PASSWORD_RESET_TTL_MINUTES: i64 = 15;
 
 const INVALID_CREDENTIALS: &str = "invalid username or password";
@@ -44,7 +43,7 @@ impl AuthService {
         }
     }
 
-    fn generate_tokens(&self, user: &User) -> Result<AuthenticationTokens, Error> {
+    fn generate_tokens(&self, user: &Identity) -> Result<AuthenticationTokens, Error> {
         let now = Utc::now();
 
         let access_claims = Claims::from([
@@ -77,7 +76,6 @@ impl AuthService {
         })
     }
 
-    /// Reads and parses the `user_id` claim out of a validated token.
     fn user_id_from(&self, token: &str) -> Result<Uuid, Error> {
         let claims = self
             .jwt
@@ -91,7 +89,7 @@ impl AuthService {
             .ok_or_else(|| Error::unauthorized(INVALID_REFRESH_TOKEN))
     }
 
-    async fn require_user_by_id(&self, user_id: Uuid) -> Result<User, Error> {
+    async fn require_user_by_id(&self, user_id: Uuid) -> Result<Identity, Error> {
         self.store
             .find_user_by_id(user_id)
             .await
@@ -116,7 +114,7 @@ impl Auth for AuthService {
             .map_err(Error::unknown)?
             .ok_or_else(|| Error::unauthorized(INVALID_CREDENTIALS))?;
 
-        if utils::compare_hash_and_password(&user.password, password).is_err() {
+        if crypto::compare_hash_and_password(&user.password, password).is_err() {
             tracing::debug!("Password Comparison Failed");
             return Err(Error::unauthorized(INVALID_CREDENTIALS));
         }
@@ -131,7 +129,7 @@ impl Auth for AuthService {
         self.generate_tokens(&user)
     }
 
-    async fn get_identity(&self, access_token: &str) -> Result<User, Error> {
+    async fn get_identity(&self, access_token: &str) -> Result<Identity, Error> {
         let user_id = self.user_id_from(access_token)?;
 
         self.require_user_by_id(user_id).await
@@ -151,11 +149,11 @@ impl Auth for AuthService {
             .await
             .map_err(Error::unknown)?;
 
-        let token = utils::random_token();
+        let token = crypto::random_token();
 
         // Only the digest is stored, the raw token travels by email.
         self.store
-            .create_password_reset(email, &utils::hash_token(&token))
+            .create_password_reset(email, &crypto::hash_token(&token))
             .await
             .map_err(Error::unknown)?;
 
@@ -175,7 +173,7 @@ impl Auth for AuthService {
     async fn reset_password(&self, token: &str, new_password: &str) -> Result<(), Error> {
         let password_reset = self
             .store
-            .find_password_by_token(&utils::hash_token(token))
+            .find_password_by_token(&crypto::hash_token(token))
             .await
             .map_err(Error::unknown)?
             .ok_or_else(|| Error::bad_request("invalid or expired token"))?;
@@ -184,7 +182,7 @@ impl Auth for AuthService {
             return Err(Error::bad_request("invalid or expired token"));
         }
 
-        let hashed_password = utils::hash_password(new_password)?;
+        let hashed_password = crypto::hash_password(new_password)?;
 
         self.store
             .reset_password(&password_reset.email, &hashed_password)
@@ -209,23 +207,24 @@ mod tests {
 
     use async_trait::async_trait;
 
-    use crate::sdk::{MaskedBytes, PasswordReset};
-    use crate::shared::emailer::EmailerError;
-    use crate::shared::errdef::code;
-    use crate::shared::jwt::HmacTokenGenerator;
+    use crate::package::auth::PasswordReset;
+    use crate::package::emailer::EmailerError;
+    use crate::package::errdef::code;
+    use crate::package::jwt::HmacTokenGenerator;
+    use crate::package::masked::MaskedBytes;
 
     const PASSWORD: &str = "Sup3r$ecret";
 
     #[derive(Default)]
     struct FakeStore {
-        users: Vec<User>,
+        users: Vec<Identity>,
         resets: Mutex<Vec<PasswordReset>>,
         password_updates: Mutex<Vec<(String, String)>>,
         deleted_resets: Mutex<Vec<String>>,
     }
 
     impl FakeStore {
-        fn with_user(user: User) -> Self {
+        fn with_user(user: Identity) -> Self {
             Self {
                 users: vec![user],
                 ..Self::default()
@@ -243,11 +242,11 @@ mod tests {
 
     #[async_trait]
     impl Store for FakeStore {
-        async fn find_user_by_id(&self, user_id: Uuid) -> Result<Option<User>, sqlx::Error> {
+        async fn find_user_by_id(&self, user_id: Uuid) -> Result<Option<Identity>, sqlx::Error> {
             Ok(self.users.iter().find(|u| u.id == user_id).cloned())
         }
 
-        async fn find_user_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error> {
+        async fn find_user_by_email(&self, email: &str) -> Result<Option<Identity>, sqlx::Error> {
             Ok(self.users.iter().find(|u| u.email == email).cloned())
         }
 
@@ -311,12 +310,12 @@ mod tests {
         }
     }
 
-    fn a_user() -> User {
-        User {
+    fn a_user() -> Identity {
+        Identity {
             id: Uuid::new_v4(),
             email: "admin@example.com".to_owned(),
             user_name: "admin".to_owned(),
-            password: utils::hash_password(PASSWORD).expect("hashing should succeed"),
+            password: crypto::hash_password(PASSWORD).expect("hashing should succeed"),
             roles: vec!["Admin".to_owned()],
         }
     }
@@ -510,7 +509,7 @@ mod tests {
         let reset = stored.first().expect("a reset should be stored");
 
         assert_ne!(reset.token, raw_token, "the raw token must not be stored");
-        assert_eq!(reset.token, utils::hash_token(raw_token));
+        assert_eq!(reset.token, crypto::hash_token(raw_token));
     }
 
     #[tokio::test]
@@ -551,7 +550,7 @@ mod tests {
         let store = Arc::new(FakeStore::with_user(user.clone()));
         let (service, _) = service_with(store.clone(), Arc::new(FakeMailer::default()));
 
-        store.push_reset(&user.email, &utils::hash_token("raw-token"), Utc::now());
+        store.push_reset(&user.email, &crypto::hash_token("raw-token"), Utc::now());
 
         service
             .reset_password("raw-token", "N3wP@ssword")
@@ -562,7 +561,7 @@ mod tests {
         let (email, hash) = updates.first().expect("the password should be updated");
 
         assert_eq!(email, &user.email);
-        assert!(utils::compare_hash_and_password(hash, "N3wP@ssword").is_ok());
+        assert!(crypto::compare_hash_and_password(hash, "N3wP@ssword").is_ok());
         assert!(store.resets.lock().unwrap().is_empty());
     }
 
@@ -574,7 +573,7 @@ mod tests {
 
         store.push_reset(
             &user.email,
-            &utils::hash_token("raw-token"),
+            &crypto::hash_token("raw-token"),
             Utc::now() - Duration::minutes(PASSWORD_RESET_TTL_MINUTES + 1),
         );
 

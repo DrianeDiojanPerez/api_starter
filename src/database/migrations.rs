@@ -1,26 +1,16 @@
 use sqlx::migrate::Migrator;
 
-/// One migration set, owned by one module.
 pub struct ModuleMigrations {
     pub name: &'static str,
     pub migrator: Migrator,
 }
 
-/// Every module's migrations, in the order they must be applied.
-///
-/// Order matters as soon as one module references another's tables, so a new
-/// module goes after the ones it depends on.
-///
-/// # Adding a module
-///
-/// 1. `just migrate-new <module> <name>` creates `migrations/<module>/`.
-/// 2. Add a line here. The macro reads the directory at compile time, so the
-///    binary always carries exactly what the source tree holds.
+/// Order matters once a module references another's tables, so a new module
+/// goes after the ones it depends on.
 pub fn all() -> Vec<ModuleMigrations> {
     vec![module("iam", sqlx::migrate!("./migrations/iam"))]
 }
 
-/// Looks up a single module, for applying one set on its own.
 pub fn find(name: &str) -> Option<ModuleMigrations> {
     all().into_iter().find(|module| module.name == name)
 }

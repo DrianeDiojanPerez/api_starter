@@ -1,18 +1,3 @@
-//! Repository and transaction tests against a real PostgreSQL instance.
-//!
-//! These are skipped unless `TEST_DATABASE_URL` is set, so `cargo test` stays
-//! runnable without any infrastructure. Run them with:
-//!
-//! ```text
-//! just test-all
-//! ```
-//!
-//! The migrations are embedded in the crate, so an empty database is enough:
-//! the first test to run applies them.
-//!
-//! Every test namespaces the rows it creates, so they are safe to run in
-//! parallel and against a database that already holds the seed data.
-
 use std::sync::Arc;
 
 use sqlx::postgres::PgPoolOptions;
@@ -28,13 +13,11 @@ use api_starter::module::iam::core::ports::{
     PermissionRepository, UpdateUser, UserRepository, UserService,
 };
 use api_starter::module::iam::core::service::UserServiceImpl;
-use api_starter::shared::auth::{PostgresAuthStore, Store as AuthStore};
-use api_starter::shared::pagination::ListRequest;
-use api_starter::shared::rbac::{Engine, PostgresRbacStore, RbacEngine, Store as RbacStore};
-use api_starter::shared::utils;
+use api_starter::package::auth::{PostgresAuthStore, Store as AuthStore};
+use api_starter::package::crypto;
+use api_starter::package::pagination::ListRequest;
+use api_starter::package::rbac::{Engine, PostgresRbacStore, RbacEngine, Store as RbacStore};
 
-/// Returns a migrated pool, or `None` when the suite should be skipped.
-///
 /// Each test gets its own pool: `#[tokio::test]` builds a runtime per test,
 /// and a sqlx pool cannot outlive the runtime that created it. Migrating is
 /// idempotent and sqlx takes an advisory lock first, so running it every time
@@ -56,7 +39,6 @@ async fn pool() -> Option<PgPool> {
     Some(pool)
 }
 
-/// Skips the test body when there is no database to talk to.
 macro_rules! database {
     () => {
         match pool().await {
@@ -73,7 +55,6 @@ struct Fixture {
     db: Arc<Database>,
     users: PgUserRepository,
     permissions: PgPermissionRepository,
-    /// Suffix that keeps this test's rows apart from every other test's.
     tag: String,
 }
 
@@ -114,7 +95,6 @@ impl Fixture {
         }
     }
 
-    /// Inserts a user through the repository, committing the transaction.
     async fn insert(&self, user: &CreateUser) -> Uuid {
         let mut tx = self.tx_manager().begin().await.expect("begin should work");
         let id = self
@@ -641,7 +621,7 @@ async fn the_service_hashes_the_password_before_storing_it() {
         .expect("the user should exist");
 
     assert_ne!(stored.password, "Sup3r$ecret");
-    assert!(utils::compare_hash_and_password(&stored.password, "Sup3r$ecret").is_ok());
+    assert!(crypto::compare_hash_and_password(&stored.password, "Sup3r$ecret").is_ok());
 }
 
 #[tokio::test]
@@ -702,7 +682,7 @@ async fn the_service_hashes_a_password_supplied_through_a_patch() {
         .expect("the lookup should succeed")
         .expect("the user should exist");
 
-    assert!(utils::compare_hash_and_password(&found.password, "An0ther@Pass").is_ok());
+    assert!(crypto::compare_hash_and_password(&found.password, "An0ther@Pass").is_ok());
 }
 
 // ──── Auth store ──────────────────────────────────
@@ -742,7 +722,7 @@ async fn the_auth_store_round_trips_a_password_reset() {
     fx.insert(&new_user).await;
 
     let store = PostgresAuthStore::new(fx.db.clone());
-    let digest = utils::hash_token(&format!("raw-{}", fx.tag));
+    let digest = crypto::hash_token(&format!("raw-{}", fx.tag));
 
     store
         .create_password_reset(&new_user.email, &digest)

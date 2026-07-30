@@ -11,7 +11,7 @@ use crate::module::iam::core::domain::{
     DELETED_USER_STATUS,
 };
 use crate::module::iam::core::ports::{UpdateUser, UserRepository};
-use crate::shared::pagination::ListRequest;
+use crate::package::pagination::ListRequest;
 
 const SELECT_USER: &str = "SELECT u.id, u.user_name, u.avatar_id, u.email, u.password, \
      u.first_name, u.last_name, us.id AS status_id, us.status, \
@@ -56,8 +56,6 @@ impl PgUserRepository {
         Self { db }
     }
 
-    /// Appends the supported `WHERE` clauses. Unknown filters are ignored,
-    /// matching the eligible filter map of the Go repository.
     fn push_filters<'a>(builder: &mut QueryBuilder<'a, sqlx::Postgres>, request: &'a ListRequest) {
         if let Some(status) = request.filter("status") {
             if let Some(status_id) = UserStatus::id_of(status) {
@@ -137,7 +135,6 @@ impl PgUserRepository {
             .collect()
     }
 
-    /// Maps a single row and loads its roles.
     async fn hydrate(&self, row: Option<PgRow>) -> Result<Option<User>, DomainError> {
         let Some(row) = row else {
             return Ok(None);

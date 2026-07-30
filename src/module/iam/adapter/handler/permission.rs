@@ -6,8 +6,8 @@ use serde::Serialize;
 
 use crate::module::iam::core::domain;
 use crate::module::iam::core::ports::PermissionService;
-use crate::shared::errdef::Error;
-use crate::shared::response::{self, Response};
+use crate::package::errdef::Error;
+use crate::package::response::{self, Response};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Permission {

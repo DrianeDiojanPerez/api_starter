@@ -4,7 +4,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::shared::rbac::{split_action, Engine, Store};
+use crate::package::rbac::{split_action, Engine, Store};
 
 pub struct RbacEngine {
     super_role: String,
@@ -19,7 +19,6 @@ impl RbacEngine {
         }
     }
 
-    /// Members of the super role skip every permission lookup.
     async fn role_bypass(&self, user_id: Uuid) -> bool {
         match self.store.get_roles(user_id).await {
             Ok(roles) => roles.contains(&self.super_role),
@@ -95,7 +94,7 @@ impl Engine for RbacEngine {
 mod tests {
     use super::*;
 
-    use crate::sdk::Permission;
+    use crate::package::rbac::Permission;
 
     struct FakeStore {
         roles: Vec<String>,
@@ -132,12 +131,9 @@ mod tests {
                 roles: roles.iter().map(|role| (*role).to_owned()).collect(),
                 permissions: permissions
                     .iter()
-                    .enumerate()
-                    .map(|(index, (resource, name))| Permission {
-                        id: index as i32,
-                        name: (*name).to_owned(),
+                    .map(|(resource, name)| Permission {
                         resource: (*resource).to_owned(),
-                        module_id: 1,
+                        name: (*name).to_owned(),
                     })
                     .collect(),
             }),

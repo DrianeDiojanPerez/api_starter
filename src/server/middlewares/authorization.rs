@@ -4,12 +4,10 @@ use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
 
-use crate::shared::auth::AuthUser;
-use crate::shared::errdef::Error;
-use crate::shared::rbac::Engine;
+use crate::package::auth::AuthUser;
+use crate::package::errdef::Error;
+use crate::package::rbac::Engine;
 
-/// The permission a guarded route requires, paired with the engine that
-/// answers the check.
 #[derive(Clone)]
 pub struct RbacState {
     engine: Arc<dyn Engine>,

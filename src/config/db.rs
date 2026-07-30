@@ -1,4 +1,4 @@
-use crate::sdk::MaskedString;
+use crate::package::masked::MaskedString;
 
 #[derive(Clone)]
 pub struct Db {
@@ -8,8 +8,6 @@ pub struct Db {
     pub username: String,
     pub password: String,
     pub max_connections: u32,
-    /// Apply pending migrations on start up. Turn it off to gate schema
-    /// changes behind a separate deploy step.
     pub run_migrations: bool,
 }
 
@@ -41,7 +39,6 @@ impl std::fmt::Debug for Db {
     }
 }
 
-/// Percent encodes the characters that would otherwise break the DSN.
 fn encode(value: &str) -> String {
     value
         .chars()

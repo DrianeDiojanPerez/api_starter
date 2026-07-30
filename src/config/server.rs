@@ -6,13 +6,9 @@ pub struct Server {
     pub port: u16,
 }
 
-/// Where this instance is running. Parsed from `APP_ENVIRONMENT`, which takes
-/// one of these three names and nothing else.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Environment {
-    /// A developer machine.
     Local,
-    /// A shared, non production deployment.
     #[default]
     Development,
     Production,
@@ -27,7 +23,6 @@ impl Environment {
         }
     }
 
-    /// Every accepted value, for the error message when parsing fails.
     pub const VARIANTS: [&'static str; 3] = ["local", "development", "production"];
 
     pub const fn is_production(self) -> bool {
@@ -41,8 +36,6 @@ impl fmt::Display for Environment {
     }
 }
 
-/// Only these three names parse, so a typo cannot quietly put an instance in
-/// the wrong mode.
 impl FromStr for Environment {
     type Err = ();
 

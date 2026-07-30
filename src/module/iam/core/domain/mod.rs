@@ -10,7 +10,6 @@ pub use permission::{AddPermission, Permission, RemovePermission};
 pub use role::Role;
 pub use user::{CreateUser, Status, User, UserStatus, ACTIVE_USER_STATUS, DELETED_USER_STATUS};
 
-/// Failures the repositories raise and the services translate into API errors.
 #[derive(Debug, thiserror::Error)]
 pub enum DomainError {
     #[error("user does not exists")]

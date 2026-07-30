@@ -7,8 +7,6 @@ use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 
 use crate::config::Mail;
 
-/// Templates are embedded in the binary, so the production image stays a
-/// single self contained file.
 const TEMPLATES: &[(&str, &str)] = &[(
     "password-reset",
     include_str!("templates/password-reset.html"),

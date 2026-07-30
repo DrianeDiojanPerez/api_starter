@@ -9,7 +9,6 @@ pub struct Error {
     pub errors: Option<Value>,
 }
 
-/// The single response envelope every endpoint returns.
 #[derive(Debug, Serialize)]
 pub struct Response<T = Value> {
     pub data: Option<T>,
@@ -46,7 +45,6 @@ impl Response<Value> {
     }
 }
 
-/// Shorthand for the `200 OK` + envelope pair returned by most handlers.
 pub fn ok<T: Serialize>(data: T) -> axum::Json<Response<T>> {
     axum::Json(Response::data(data))
 }

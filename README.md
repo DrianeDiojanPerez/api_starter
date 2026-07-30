@@ -31,11 +31,10 @@ src/
 ├── main.rs                  entrypoint
 ├── config/                  environment backed configuration
 ├── database/                connection pool and transaction manager
+├── package/                 everything the modules share, see below
 ├── provider/                composition root, wires every dependency
-├── sdk/                     types shared across modules
 ├── server/                  router, global middleware, error handling
 │   └── middlewares/         authentication, authorization, request context
-├── shared/                  auth, rbac, jwt, mail, errors, pagination
 └── module/
     ├── auth/                login, refresh, forgot and reset password
     └── iam/                 users and permissions
@@ -46,12 +45,67 @@ api/bruno/API/               Bruno request collection
 justfile                     task runner recipes
 ```
 
+### The `package` folder
+
+Everything the modules build on lives in `package`, so there is one answer to
+"where does this go": if it is not a module, it is a package.
+
+| Module       | What it holds                                          |
+| ------------ | ------------------------------------------------------ |
+| `auth`       | login, refresh, password recovery, the `Identity` type |
+| `crypto`     | password hashing, random tokens, token digests         |
+| `emailer`    | SMTP transport and the embedded templates              |
+| `env`        | typed environment reads with fallbacks                 |
+| `errdef`     | the error type and how it renders as HTTP              |
+| `extract`    | JSON and validating extractors                         |
+| `jwt`        | HS256 signing and validation                           |
+| `logger`     | tracing subscriber, JSON to a daily rotated file       |
+| `masked`     | secret wrappers that stay redacted in logs and JSON    |
+| `pagination` | list requests, filters, sorting and the page envelope  |
+| `rbac`       | permission checks, `Resource.Permission` actions       |
+| `response`   | the single response envelope                           |
+| `validation` | password rules and flattened validator output          |
+
+The lower half of that list is liftable into another service more or less
+unchanged; the upper half encodes decisions specific to this API. Nothing
+enforces the difference, so if you copy `env` or `crypto` out, check what
+comes with it.
+
+`config` is the only caller of `env`, so the rules about blank values,
+trimming and fallbacks are written once:
+
+```rust
+env::string_or("APP_NAME", "App_sample")     // unset or blank falls back
+env::required("JWT_SECRET")?                 // refuses to start without it
+env::u16_or("APP_PORT", 3000)?               // rejects 70000, it is a port
+env::u32_or("DB_MAX_CONNECTIONS", 10)?       // rejects -1, a pool is unsigned
+env::i64_or("ACCESS_TOKEN_TTL", 3600)?       // seconds
+env::boolean_or("DB_RUN_MIGRATIONS", true)?  // 1/yes/on as well as true
+env::vec_or("CORS_ORIGINS", &["*"])          // comma separated, trimmed
+env::variant_or_default("LOGGER_LEVEL")?     // one of a fixed set of names
+```
+
+Every reader is named for the type it hands back, so the width is checked at
+the edge rather than cast into shape later. The parse itself is private: there
+is no generic `parsed::<T>` to reach for, and that is what keeps the call sites
+reading as concrete types.
+
+`variant_or_default` is the one generic reader, because `env` cannot name the
+enums that live in `config`.
+
+A value that is present but unparseable is an error, not a silent fallback: a
+typo in a deployment should stop the process at start up rather than quietly
+running with a default nobody asked for.
+
 ## Endpoints
 
 Public:
 
 | Method | Path                  | Description                     |
 | ------ | --------------------- | ------------------------------- |
+| GET    | `/v1/healthcheck`     | Liveness probe                  |
+| GET    | `/docs`               | API reference, rendered         |
+| GET    | `/openapi.yaml`       | The spec behind it              |
 | POST   | `/v1/login`           | Issue an access + refresh token |
 | POST   | `/v1/refresh-token`   | Exchange a refresh token        |
 | POST   | `/v1/forgot-password` | Mail a password reset link      |
@@ -77,6 +131,31 @@ Every response uses one envelope:
 ```json
 { "data": { }, "pagination": { }, "error": null }
 ```
+
+## API reference
+
+`GET /docs` renders the spec at `src/server/openapi.yaml`, which is embedded
+into the binary, so the production image serves its own documentation with no
+extra files to deploy. `GET /openapi.yaml` returns the raw spec for a client
+generator.
+
+The spec is not generated from the code, so it can drift. A test in
+`src/server/docs.rs` fails if a route is served without being documented,
+which catches the most common half of that.
+
+## Logging
+
+Every request logs twice, as JSON, inside a span carrying the route, request
+id and caller address:
+
+```json
+{"level":"INFO","fields":{"message":"request started","method":"POST","uri":"/v1/login"}}
+{"level":"INFO","fields":{"message":"request completed","method":"POST","uri":"/v1/login","status":200,"latency_ms":301.02}}
+```
+
+`latency_ms` is fractional, since most requests finish well inside a
+millisecond and would otherwise all read as `0`. A 5xx logs at `ERROR` with
+the same fields.
 
 ## Quick start (Docker)
 
@@ -116,11 +195,16 @@ just test-all      # the above plus the tests that need a database
 just lint          # cargo clippy --all-targets -- -D warnings
 just fmt           # cargo fmt --all
 just check         # fmt-check + lint + test
-just up / down / logs / ps
+just up            # build the image and start the stack
+just start         # start it again without rebuilding
+just rebuild       # rebuild from scratch, ignoring cached layers
+just down          # stop it
+just down-hard     # stop it and drop the volumes, cargo caches included
+just logs / ps
 just api           # run the Bruno collection against a running server
 ```
 
-A `Makefile` with the same targets is kept for parity with the Go repository.
+A `Makefile` mirroring the same targets is included as well.
 
 ## Tests
 
@@ -240,7 +324,7 @@ environment variable.
 
 ## Docker targets
 
-The `Dockerfile` is multi stage, matching the Go setup:
+The `Dockerfile` is multi stage:
 
 - `development` hot reloads through `cargo watch`
 - `test` runs `cargo test --all-targets`
@@ -264,12 +348,9 @@ syntax.
 `development`; only `production` turns the stdout logger off. Both variables
 reject anything else at start up rather than falling back to a default.
 
-## Notes on the port
+## Design notes
 
-- Password reset tokens are stored as a SHA-256 digest instead of in clear
-  text, so the table cannot be replayed if it leaks. The token mailed to the
-  user is unchanged.
+- Password reset tokens are stored as a SHA-256 digest, never in clear text,
+  so the table cannot be replayed if it leaks. Only the mailed token is usable.
 - `PATCH /v1/users/...` takes a typed optional payload rather than an untyped
   map, so an unknown field is rejected instead of silently ignored.
-- Password hashes remain bcrypt, which keeps hashes interchangeable with the
-  Go service during a migration.

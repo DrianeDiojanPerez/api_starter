@@ -7,9 +7,8 @@ use axum::routing::post;
 use axum::Router;
 
 use crate::module::auth::adapter::handler;
-use crate::shared::auth::Auth;
+use crate::package::auth::Auth;
 
-/// Public routes. These are the only endpoints reachable without a token.
 pub fn routes(auth: Arc<dyn Auth>) -> Router {
     Router::new()
         .route("/v1/login", post(handler::login))

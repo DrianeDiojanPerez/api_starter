@@ -11,7 +11,6 @@ pub struct Status {
     pub status: String,
 }
 
-/// Status names accepted on filters and partial updates.
 pub struct UserStatus;
 
 impl UserStatus {

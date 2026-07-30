@@ -9,7 +9,6 @@ use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::config;
 
-/// Handle passed to every repository. Cloning is cheap, the pool is shared.
 #[derive(Clone)]
 pub struct Database {
     pool: PgPool,
@@ -26,15 +25,12 @@ impl Database {
         Ok(Self { pool })
     }
 
-    /// Wraps an existing pool. Used by the integration tests, which build the
-    /// pool themselves from `TEST_DATABASE_URL`.
     pub fn from_pool(pool: PgPool) -> Self {
         Self { pool }
     }
 
-    /// Applies every module's pending migrations, in registry order. sqlx
-    /// takes an advisory lock first, so several replicas starting at once is
-    /// safe.
+    /// sqlx takes an advisory lock first, so several replicas starting at
+    /// once is safe.
     pub async fn migrate(&self) -> Result<(), MigrateError> {
         for module in migrations::all() {
             self.migrate_with(&module).await?;
@@ -43,8 +39,6 @@ impl Database {
         Ok(())
     }
 
-    /// Applies one module's migrations. Returns `Ok(false)` when no module
-    /// goes by that name.
     pub async fn migrate_module(&self, name: &str) -> Result<bool, MigrateError> {
         match migrations::find(name) {
             Some(module) => self.migrate_with(&module).await.map(|()| true),
@@ -66,9 +60,6 @@ impl Database {
     }
 }
 
-/// Owns transaction lifetimes for the services, replacing the context based
-/// transaction manager the Go code used. Services call `begin`, hand the
-/// connection to the repositories and commit once every step succeeded.
 #[derive(Clone)]
 pub struct TxManager {
     db: Arc<Database>,
@@ -84,14 +75,11 @@ impl TxManager {
     }
 }
 
-/// Postgres error codes the repositories translate into domain errors.
 pub mod pg_error {
     pub const UNIQUE_VIOLATION: &str = "23505";
     pub const NOT_NULL_VIOLATION: &str = "23502";
     pub const FOREIGN_KEY_VIOLATION: &str = "23503";
 
-    /// Returns the SQLSTATE of a database error, if the failure came from
-    /// Postgres at all.
     pub fn code_of(err: &sqlx::Error) -> Option<String> {
         match err {
             sqlx::Error::Database(db_err) => db_err.code().map(|code| code.into_owned()),
@@ -111,5 +99,4 @@ pub mod pg_error {
     }
 }
 
-/// Convenience alias so repository signatures stay readable.
 pub type QueryResult = PgQueryResult;

@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: run build test lint fmt check up down logs migrate migrate-module migrate-down migrate-status
+.PHONY: run build test lint fmt check network up down logs migrate migrate-module migrate-down migrate-status
 
 DATABASE_URL := postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_DATABASE)
 
@@ -19,7 +19,10 @@ fmt:
 check: fmt lint test
 
 # ──── Containers ──────────────────────────────────
-up:
+network:
+	@docker network inspect api-starter-bridge >/dev/null 2>&1 \
+		|| docker network create api-starter-bridge
+up: network
 	@docker compose --profile dev up --build
 down:
 	@docker compose --profile dev down

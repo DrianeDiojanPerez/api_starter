@@ -1,21 +1,20 @@
 mod engine;
+mod permission;
 mod store;
 
 pub use engine::RbacEngine;
+pub use permission::Permission;
 pub use store::{PostgresRbacStore, Store};
 
 use async_trait::async_trait;
 use uuid::Uuid;
 
-/// Permission checks used by the authorization middleware. Actions are written
-/// as `Resource.Permission`, for example `Users.View All`.
 #[async_trait]
 pub trait Engine: Send + Sync {
     async fn can(&self, user_id: Uuid, action: &str) -> bool;
     async fn can_any(&self, user_id: Uuid, actions: &[&str]) -> bool;
 }
 
-/// Splits `Users.View All` into `("Users", "View All")`.
 pub fn split_action(action: &str) -> Option<(&str, &str)> {
     action.split_once('.')
 }

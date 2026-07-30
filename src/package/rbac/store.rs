@@ -5,7 +5,7 @@ use sqlx::Row;
 use uuid::Uuid;
 
 use crate::database::Database;
-use crate::sdk::Permission;
+use crate::package::rbac::Permission;
 
 #[async_trait]
 pub trait Store: Send + Sync {
@@ -45,7 +45,7 @@ impl Store for PostgresRbacStore {
 
     async fn get_permissions(&self, user_id: Uuid) -> Result<Vec<Permission>, sqlx::Error> {
         let rows = sqlx::query(
-            "SELECT p.id, p.name, p.resource, p.module_id \
+            "SELECT p.resource, p.name \
              FROM iam.permissions p \
              INNER JOIN iam.role_has_permissions rhp ON p.id = rhp.permission_id \
              INNER JOIN iam.user_has_roles uhr ON uhr.role_id = rhp.role_id \
@@ -58,10 +58,8 @@ impl Store for PostgresRbacStore {
         rows.into_iter()
             .map(|row| {
                 Ok(Permission {
-                    id: row.try_get("id")?,
-                    name: row.try_get("name")?,
                     resource: row.try_get("resource")?,
-                    module_id: row.try_get("module_id")?,
+                    name: row.try_get("name")?,
                 })
             })
             .collect()

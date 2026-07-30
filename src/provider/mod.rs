@@ -3,16 +3,13 @@ use std::sync::Arc;
 use crate::config::AppConfig;
 use crate::database::{Database, TxManager};
 use crate::module::iam;
-use crate::shared::auth::{Auth, AuthService, PostgresAuthStore};
-use crate::shared::emailer::{Emailer, SmtpEmailer};
-use crate::shared::jwt::{HmacTokenGenerator, TokenGenerator};
-use crate::shared::rbac::{Engine, PostgresRbacStore, RbacEngine};
+use crate::package::auth::{Auth, AuthService, PostgresAuthStore};
+use crate::package::emailer::{Emailer, SmtpEmailer};
+use crate::package::jwt::{HmacTokenGenerator, TokenGenerator};
+use crate::package::rbac::{Engine, PostgresRbacStore, RbacEngine};
 
-/// Role that bypasses every permission check.
 const SUPER_ROLE: &str = "Admin";
 
-/// Single composition root. Everything is built once at start up and shared
-/// with the router through cheap `Arc` clones.
 #[derive(Clone)]
 pub struct Provider {
     pub config: Arc<AppConfig>,

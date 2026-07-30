@@ -1,0 +1,590 @@
+openapi: 3.1.0
+info:
+  title: API Starter
+  version: "0.1.0"
+  description: |
+    Authentication, users and permissions, ready to build the rest of a
+    product on top of.
+
+    ## Authentication
+
+    Every endpoint except `/v1/healthcheck`, `/v1/login`, `/v1/refresh-token`,
+    `/v1/forgot-password` and `/v1/reset-password` needs a bearer token from
+    `/v1/login`.
+
+    ```
+    Authorization: Bearer <token>
+    ```
+
+    Access tokens expire after an hour by default and refresh tokens after a
+    week. Exchange an expired access token at `/v1/refresh-token` rather than
+    asking the user to sign in again.
+
+    ## Response shape
+
+    Success and failure use the same envelope, so `error` is the only field
+    you have to read first:
+
+    ```json
+    { "data": { }, "pagination": { }, "error": null }
+    { "data": null, "error": { "code": 1001, "message": "user does not exists" } }
+    ```
+
+    `pagination` appears only on list endpoints. `error` is `null` on success
+    and an object on failure, never both.
+
+    ## Errors
+
+    The HTTP status and `error.code` always agree, so branch on whichever
+    suits you:
+
+    | `error.code` | Status | Meaning                                          |
+    | ------------ | ------ | ------------------------------------------------ |
+    | `1000`       | 422    | The body failed validation.                      |
+    | `1001`       | 404    | The record you addressed does not exist.         |
+    | `1002`       | 401    | Missing, invalid or expired credentials.         |
+    | `1003`       | 400    | The request was malformed.                       |
+    | `1004`       | 409    | The write clashed with data already stored.      |
+    | `1005`       | 422    | Your request was fine; the stored data is not.   |
+    | `1006`       | 403    | Authenticated, but not allowed to do this.       |
+    | `2000`       | 500    | Something on our side failed.                    |
+
+    A `1000` also carries `error.errors`, mapping each rejected field to the
+    reasons it was rejected. A `2000` never explains itself: `message` is
+    always `internal server error`, so quote the `x-request-id` response
+    header instead, which identifies the exact request in the logs.
+
+    ## Permissions
+
+    Actions are written `Resource.Permission`, for example `Users.View All`.
+    Members of the `Admin` role bypass every permission check.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: Health
+    description: Liveness probe.
+  - name: Authentication
+    description: Signing in, refreshing and password recovery.
+  - name: Users
+    description: Reading and writing user records.
+  - name: Permissions
+    description: The permissions the system knows about.
+
+paths:
+  /v1/healthcheck:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      description: |
+        Answers as long as the process is serving. It does not touch the
+        database on purpose, so a slow query cannot get the service killed by
+        an orchestrator.
+      security: []
+      responses:
+        "200":
+          description: The service is up.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          status: { type: string, examples: ["OK"] }
+                          version: { type: string, examples: ["0.1.0"] }
+
+  /v1/login:
+    post:
+      tags: [Authentication]
+      summary: Issue an access and refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, examples: ["admin@example.com"] }
+                password: { type: string, format: password, examples: ["password"] }
+      responses:
+        "200":
+          description: The credentials matched.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Tokens" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /v1/refresh-token:
+    post:
+      tags: [Authentication]
+      summary: Exchange a refresh token for a new pair
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  description: The `refresh_token` from a previous login.
+      responses:
+        "200":
+          description: A new token pair.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/Tokens" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /v1/forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Mail a password reset link
+      description: |
+        Mails a single use token to the address. Only a digest of it is
+        stored, so the link in the mail is the only usable copy. Requesting a
+        second time replaces the first request.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, callback_uri]
+              properties:
+                email: { type: string, format: email }
+                callback_uri:
+                  type: string
+                  format: uri
+                  description: Where the mailed link should point. The token is appended to it.
+                  examples: ["https://app.example.com/reset-password"]
+      responses:
+        "200":
+          description: The mail was sent.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data: { type: string, examples: ["password recovery email sent"] }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /v1/reset-password:
+    post:
+      tags: [Authentication]
+      summary: Consume a reset token and set a new password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                  description: The token from the recovery mail. Expires, and is consumed on use.
+                password:
+                  $ref: "#/components/schemas/StrongPassword"
+      responses:
+        "200":
+          description: The password was changed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Envelope" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /v1/users:
+    get:
+      tags: [Users]
+      summary: List users
+      description: |
+        Requires the `Users.View All` permission. Any query parameter that is
+        not listed below is treated as a filter on a column of the same name;
+        an unknown column is ignored rather than rejected.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: per_page, in: query, schema: { type: integer, default: 10 } }
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [user_name, email, first_name, last_name, created_at]
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: asc } }
+        - { name: first_name, in: query, schema: { type: string }, description: Example of a column filter. }
+      responses:
+        "200":
+          description: A page of users.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/User" }
+                      pagination: { $ref: "#/components/schemas/Pagination" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_name, email, password, first_name, last_name, department]
+              properties:
+                user_name: { type: string }
+                avatar_id: { type: string }
+                email: { type: string, format: email }
+                password: { $ref: "#/components/schemas/StrongPassword" }
+                first_name: { type: string }
+                last_name: { type: string }
+                department: { type: integer, minimum: 1, description: Department id. }
+                roles:
+                  type: array
+                  items: { type: string }
+                  examples: [["Staff"]]
+      responses:
+        "200":
+          description: The id of the created user.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data: { type: string, format: uuid }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /v1/users/my-user:
+    get:
+      tags: [Users]
+      summary: Read the authenticated user
+      responses:
+        "200":
+          description: The user behind the token.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Users]
+      summary: Update the authenticated user
+      description: |
+        Narrower than the admin patch: `status`, `department_id`, `add_roles`
+        and `remove_roles` are dropped, so a user cannot promote themselves.
+        Password changes go through the reset flow, not here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateMyUser" }
+      responses:
+        "200":
+          description: The user was updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Envelope" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /v1/users/{user-id}:
+    parameters:
+      - name: user-id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Users]
+      summary: Read one user
+      responses:
+        "200":
+          description: The user.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Users]
+      summary: Update one user
+      description: |
+        Every field is optional; send only what changes. An unknown field is
+        rejected rather than ignored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateUser" }
+      responses:
+        "200":
+          description: The user was updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Envelope" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    delete:
+      tags: [Users]
+      summary: Delete one user
+      description: A soft delete. The row is kept and moved to the `Deleted` status.
+      responses:
+        "200":
+          description: The user was deleted.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          message: { type: string }
+                          user_id: { type: string, format: uuid }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/permissions:
+    get:
+      tags: [Permissions]
+      summary: List every permission
+      description: |
+        The full catalogue, not the ones the caller holds. Build an action
+        string as `resource` + `.` + `name`, for example `Users.View All`.
+      responses:
+        "200":
+          description: Every permission.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Permission" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Envelope:
+      type: object
+      properties:
+        data: { description: Present on success, null on failure. }
+        pagination:
+          allOf: [{ $ref: "#/components/schemas/Pagination" }]
+          description: List endpoints only.
+        error:
+          oneOf:
+            - { $ref: "#/components/schemas/Error" }
+            - { type: "null" }
+
+    Error:
+      type: object
+      properties:
+        code: { type: integer, examples: [1001] }
+        message: { type: string, examples: ["user does not exists"] }
+        errors:
+          type: object
+          description: Validation failures only. Each key is a field, each value the reasons it was rejected.
+          additionalProperties:
+            type: array
+            items: { type: string }
+          examples:
+            - password: ["must contain at least one uppercase letter"]
+
+    Tokens:
+      type: object
+      properties:
+        token: { type: string, description: Bearer token for the Authorization header. }
+        refresh_token: { type: string, description: Exchange this at /v1/refresh-token. }
+
+    StrongPassword:
+      type: string
+      format: password
+      minLength: 8
+      description: |
+        At least 8 characters, with an uppercase letter, a lowercase letter, a
+        digit and a symbol. Each unmet rule is reported separately.
+      examples: ["Sup3r$ecret"]
+
+    User:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        avatar_id: { type: string }
+        user_name: { type: string }
+        email: { type: string, format: email }
+        first_name: { type: string }
+        last_name: { type: string }
+        status: { type: string, examples: ["Active"] }
+        department:
+          type: object
+          properties:
+            department_id: { type: integer }
+            department_name: { type: string }
+            company:
+              type: object
+              properties:
+                company_id: { type: integer }
+                name: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+          examples: [["Admin"]]
+
+    UpdateUser:
+      type: object
+      additionalProperties: false
+      properties:
+        avatar_id: { type: string }
+        first_name: { type: string }
+        last_name: { type: string }
+        email: { type: string, format: email }
+        department_id: { type: integer }
+        status: { type: string, examples: ["Active"] }
+        password: { $ref: "#/components/schemas/StrongPassword" }
+        add_roles: { type: array, items: { type: string } }
+        remove_roles: { type: array, items: { type: string } }
+
+    UpdateMyUser:
+      type: object
+      additionalProperties: false
+      properties:
+        avatar_id: { type: string }
+        first_name: { type: string }
+        last_name: { type: string }
+        email: { type: string, format: email }
+
+    Permission:
+      type: object
+      properties:
+        name: { type: string, examples: ["View All"] }
+        resource: { type: string, examples: ["Users"] }
+        module: { type: string, examples: ["IAM Module"] }
+
+    Pagination:
+      type: object
+      properties:
+        total_count: { type: integer }
+        total_pages: { type: integer }
+        current_page: { type: integer }
+        per_page: { type: integer }
+        next_page: { type: [integer, "null"] }
+        previous_page: { type: [integer, "null"] }
+
+  responses:
+    BadRequest:
+      description: The request was malformed.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+    Unauthorized:
+      description: Missing, invalid or expired credentials.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+    Forbidden:
+      description: Authenticated, but without the permission this route requires.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+    NotFound:
+      description: The record you addressed does not exist.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+    Conflict:
+      description: The write clashed with data already stored.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+    ValidationFailed:
+      description: The body failed validation. `error.errors` lists each rejected field.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+
+security:
+  - bearerAuth: []

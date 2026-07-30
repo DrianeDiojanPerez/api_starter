@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use crate::module::iam::core::domain::Permission;
 use crate::module::iam::core::ports::{PermissionRepository, PermissionService};
-use crate::shared::errdef::Error;
+use crate::package::errdef::Error;
 
 pub struct PermissionServiceImpl {
     repository: Arc<dyn PermissionRepository>,
