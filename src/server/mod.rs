@@ -1,3 +1,4 @@
+mod docs;
 pub mod middlewares;
 mod mount;
 
