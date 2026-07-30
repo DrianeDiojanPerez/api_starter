@@ -1,14 +1,3 @@
-//! Typed access to environment variables.
-//!
-//! Everything that reads the process environment goes through here, so the
-//! rules about blank values, trimming and fallbacks live in one place instead
-//! of being repeated in every loader.
-//!
-//! Unlike the Go helpers this was ported from, a value that is present but
-//! unparseable is an error rather than a silent fallback. A typo in a
-//! deployment should stop the process at start up, not quietly run with a
-//! default nobody asked for.
-
 use std::env;
 use std::str::FromStr;
 

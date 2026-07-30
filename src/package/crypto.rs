@@ -1,9 +1,3 @@
-//! Password hashing and token generation.
-//!
-//! These know nothing about HTTP status codes or the application's error
-//! envelope. Deciding that a password mismatch is a 401 is a policy call, so
-//! it is made by the caller in `shared::utils`, not here.
-
 use rand::RngCore;
 use sha2::{Digest, Sha256};
 

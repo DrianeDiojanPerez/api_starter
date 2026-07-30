@@ -1,10 +1,3 @@
-//! Turns the crypto primitives in `package::crypto` into the error type the
-//! rest of the application speaks.
-//!
-//! The mapping is the interesting part: a wrong password and an unreadable
-//! stored hash both become the same 401, so a caller cannot tell the two apart
-//! and use that to probe for accounts.
-
 use crate::package::crypto;
 use crate::shared::errdef::Error;
 
